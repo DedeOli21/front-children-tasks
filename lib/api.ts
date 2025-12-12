@@ -1,10 +1,16 @@
 // Detecta automaticamente o hostname correto para a API
+// Prioriza a variável de ambiente NEXT_PUBLIC_API_URL
 // Se estiver acessando pelo IP (ex: 172.18.224.1), usa o mesmo IP para a API
 // Se estiver em localhost, usa localhost
 function getApiBaseUrl(): string {
+  // Prioriza a variável de ambiente (usada em produção)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL
+  }
+  
   if (typeof window === "undefined") {
-    // Server-side: usa variável de ambiente ou localhost
-    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+    // Server-side: usa localhost como fallback
+    return "http://localhost:3001"
   }
   
   // Client-side: detecta automaticamente
@@ -16,8 +22,10 @@ function getApiBaseUrl(): string {
     return `http://localhost:${port}`
   }
   
-  // Caso contrário, usa o mesmo hostname (IP da rede local)
-  return `http://${hostname}:${port}`
+  // Em produção (Vercel, etc), se não tiver variável de ambiente, tenta usar HTTPS
+  // Mas é melhor sempre configurar NEXT_PUBLIC_API_URL
+  const protocol = window.location.protocol === "https:" ? "https" : "http"
+  return `${protocol}://${hostname}:${port}`
 }
 
 const API_BASE_URL = getApiBaseUrl()

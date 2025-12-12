@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Permite acesso de qualquer origem durante desenvolvimento
+  allowedDevOrigins: ["*"],
 };
 
 export default nextConfig;

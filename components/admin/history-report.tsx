@@ -11,14 +11,20 @@ import autoTable from "jspdf-autotable"
 
 type PeriodType = "day" | "week" | "month"
 
-export function HistoryReport() {
+interface HistoryReportProps {
+  // Criança cujo histórico será exibido (obrigatório para responsável)
+  childId?: string
+}
+
+export function HistoryReport({ childId }: HistoryReportProps) {
   const [period, setPeriod] = useState<PeriodType>("day")
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     loadHistory()
-  }, [period])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, childId])
 
   const loadHistory = async () => {
     setIsLoading(true)
@@ -44,7 +50,8 @@ export function HistoryReport() {
 
       const data = await historyApi.getByRange(
         format(startDate, "yyyy-MM-dd"),
-        format(endDate, "yyyy-MM-dd")
+        format(endDate, "yyyy-MM-dd"),
+        childId,
       )
       setHistory(data)
     } catch (error) {

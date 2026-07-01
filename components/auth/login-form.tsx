@@ -4,10 +4,10 @@ import type React from "react"
 
 import { useState } from "react"
 import { Star, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react"
-import { authApi } from "@/lib/api"
+import { authApi, type UserProfile } from "@/lib/api"
 
 interface LoginFormProps {
-  onSuccess: (token: string) => void
+  onSuccess: (token: string, user?: UserProfile) => void
   onSwitchToRegister: () => void
 }
 
@@ -30,7 +30,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
       // Salva o token no localStorage (API retorna access_token)
       const token = response.access_token
       localStorage.setItem("token", token)
-      onSuccess(token)
+      onSuccess(token, response.user)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao fazer login")
     } finally {
@@ -51,7 +51,6 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
           </div>
         </div>
         <h1 className="text-2xl font-black text-foreground">Quadro de Recompensas</h1>
-        <p className="mt-1 text-lg font-bold text-primary">do Gabriel</p>
       </div>
 
       {/* Card de Login */}
@@ -69,11 +68,12 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <input
-              type="email"
-              placeholder="Email"
+              type="text"
+              placeholder="Email ou usuário"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoCapitalize="none"
               className="w-full rounded-xl border-2 border-border bg-muted py-4 pl-12 pr-4 text-base font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
             />
           </div>

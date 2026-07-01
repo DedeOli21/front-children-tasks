@@ -28,6 +28,8 @@ interface AdminDashboardProps {
   onMysteryPrizeUpdate: (id: string, prize: Partial<MysteryPrize>) => void
   onMysteryPrizeDelete: (id: string) => void
   onBack: () => void
+  // Criança selecionada (para o relatório de histórico)
+  historyChildId?: string
 }
 
 type AdminTab = "tasks" | "penalties" | "rewards" | "routines" | "history" | "mystery"
@@ -54,6 +56,7 @@ export function AdminDashboard({
   onMysteryPrizeUpdate,
   onMysteryPrizeDelete,
   onBack,
+  historyChildId,
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>("tasks")
 
@@ -174,7 +177,7 @@ export function AdminDashboard({
             onDelete={onRewardDelete}
           />
         )}
-        {activeTab === "history" && <HistoryReport />}
+        {activeTab === "history" && <HistoryReport childId={historyChildId} />}
         {activeTab === "mystery" && (
           <MysteryPrizesAdmin
             prizes={mysteryPrizes}

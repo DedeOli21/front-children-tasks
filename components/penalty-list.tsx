@@ -6,21 +6,24 @@ import type { Penalty } from "@/lib/api"
 
 interface PenaltyListProps {
   penalties: Penalty[]
-  onPenalty: (penaltyId: string, amount: number) => void
+  onPenalty?: (penaltyId: string, amount: number) => void
+  // Modo informativo (visão da criança): mostra as regras sem permitir aplicar
+  readOnly?: boolean
 }
 
-export function PenaltyList({ penalties, onPenalty }: PenaltyListProps) {
+export function PenaltyList({ penalties, onPenalty, readOnly = false }: PenaltyListProps) {
   const [animatingPenalty, setAnimatingPenalty] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState<string | null>(null)
 
   const handlePenaltyClick = (penaltyId: string) => {
+    if (readOnly) return
     setShowConfirm(penaltyId)
   }
 
   const confirmPenalty = (penaltyId: string, amount: number) => {
     setAnimatingPenalty(penaltyId)
     setTimeout(() => {
-      onPenalty(penaltyId, amount)
+      onPenalty?.(penaltyId, amount)
       setAnimatingPenalty(null)
       setShowConfirm(null)
     }, 300)
@@ -34,8 +37,12 @@ export function PenaltyList({ penalties, onPenalty }: PenaltyListProps) {
           <AlertTriangle className="h-6 w-6 text-red-500" />
         </div>
         <div>
-          <p className="text-lg font-bold text-red-700">Opa! Algo deu errado?</p>
-          <p className="text-sm text-red-600/80">Toque abaixo para registrar</p>
+          <p className="text-lg font-bold text-red-700">
+            {readOnly ? "Cuidado para não perder estrelas!" : "Opa! Algo deu errado?"}
+          </p>
+          <p className="text-sm text-red-600/80">
+            {readOnly ? "Essas atitudes fazem perder estrelas" : "Toque abaixo para registrar"}
+          </p>
         </div>
       </div>
 
@@ -102,11 +109,13 @@ export function PenaltyList({ penalties, onPenalty }: PenaltyListProps) {
       </div>
 
       {/* Info message */}
-      <div className="rounded-xl bg-amber-50 p-4 text-center">
-        <p className="text-sm text-amber-700">
-          <strong>Dica:</strong> Converse com Gabriel sobre o que aconteceu antes de aplicar
-        </p>
-      </div>
+      {!readOnly && (
+        <div className="rounded-xl bg-amber-50 p-4 text-center">
+          <p className="text-sm text-amber-700">
+            <strong>Dica:</strong> Converse com a criança sobre o que aconteceu antes de aplicar
+          </p>
+        </div>
+      )}
     </div>
   )
 }

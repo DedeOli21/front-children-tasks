@@ -3,15 +3,16 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Star, Mail, Lock, User, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react"
-import { authApi } from "@/lib/api"
+import { Star, Mail, Lock, User, Loader2, Eye, EyeOff, ArrowLeft, GraduationCap, Home } from "lucide-react"
+import { authApi, type UserProfile } from "@/lib/api"
 
 interface RegisterFormProps {
-  onSuccess: (token: string) => void
+  onSuccess: (token: string, user?: UserProfile) => void
   onSwitchToLogin: () => void
 }
 
 export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) {
+  const [accountType, setAccountType] = useState<"parent" | "teacher">("parent")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -39,12 +40,12 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
     try {
       // API call para registro
-      const response = await authApi.register({ name, email, password })
+      const response = await authApi.register({ name, email, password, role: accountType })
 
       // Salva o token no localStorage (API retorna access_token)
       const token = response.access_token
       localStorage.setItem("token", token)
-      onSuccess(token)
+      onSuccess(token, response.user)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar conta")
     } finally {
@@ -82,6 +83,34 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Tipo de conta */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setAccountType("parent")}
+              className={`flex flex-col items-center gap-1 rounded-xl border-2 p-3 font-bold transition-all ${
+                accountType === "parent"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-muted text-muted-foreground hover:border-primary/50"
+              }`}
+            >
+              <Home className="h-5 w-5" />
+              <span className="text-sm">Responsável</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("teacher")}
+              className={`flex flex-col items-center gap-1 rounded-xl border-2 p-3 font-bold transition-all ${
+                accountType === "teacher"
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-600"
+                  : "border-border bg-muted text-muted-foreground hover:border-indigo-300"
+              }`}
+            >
+              <GraduationCap className="h-5 w-5" />
+              <span className="text-sm">Professor(a)</span>
+            </button>
+          </div>
+
           {/* Nome */}
           <div className="relative">
             <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -176,7 +205,9 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
       {/* Dicas */}
       <div className="mt-6 w-full max-w-sm rounded-2xl bg-secondary/50 p-4">
         <p className="text-center text-sm font-semibold text-secondary-foreground">
-          Dica: Use o email dos pais para gerenciar o quadro de recompensas!
+          {accountType === "parent"
+            ? "Depois de criar sua conta, cadastre as crianças no painel!"
+            : "Peça o código de convite do aluno ao responsável para vinculá-lo."}
         </p>
       </div>
     </div>

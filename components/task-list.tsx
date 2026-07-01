@@ -8,10 +8,12 @@ interface TaskListProps {
   tasks: Task[]
   completedTasks: string[]
   onTaskComplete: (taskId: string) => void
-  onResetDay: () => void
+  // Resetar o dia é ação do responsável; quando ausente, o botão fica oculto
+  onResetDay?: () => void
+  childName?: string
 }
 
-export function TaskList({ tasks, completedTasks, onTaskComplete, onResetDay }: TaskListProps) {
+export function TaskList({ tasks, completedTasks, onTaskComplete, onResetDay, childName }: TaskListProps) {
   const [animatingTask, setAnimatingTask] = useState<string | null>(null)
 
   const handleTaskClick = (taskId: string) => {
@@ -42,13 +44,15 @@ export function TaskList({ tasks, completedTasks, onTaskComplete, onResetDay }: 
             </p>
           </div>
         </div>
-        <button
-          onClick={onResetDay}
-          className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 font-semibold text-secondary-foreground transition-all hover:bg-secondary/80 active:scale-95"
-        >
-          <RotateCcw className="h-4 w-4" />
-          <span className="hidden sm:inline">Resetar</span>
-        </button>
+        {onResetDay && (
+          <button
+            onClick={onResetDay}
+            className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 font-semibold text-secondary-foreground transition-all hover:bg-secondary/80 active:scale-95"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span className="hidden sm:inline">Resetar</span>
+          </button>
+        )}
       </div>
 
       {/* Task Cards - Use tasks from props */}
@@ -115,7 +119,7 @@ export function TaskList({ tasks, completedTasks, onTaskComplete, onResetDay }: 
       {/* Completion Message */}
       {completedCount === totalTasks && totalTasks > 0 && (
         <div className="animate-pop-in rounded-2xl bg-gradient-to-r from-primary to-emerald-500 p-6 text-center shadow-xl">
-          <p className="text-2xl font-black text-white">Parabéns, Gabriel!</p>
+          <p className="text-2xl font-black text-white">Parabéns{childName ? `, ${childName}` : ""}!</p>
           <p className="mt-2 text-lg font-semibold text-white/90">Você completou todos os combinados de hoje!</p>
         </div>
       )}

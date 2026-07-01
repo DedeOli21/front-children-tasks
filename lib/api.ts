@@ -53,9 +53,28 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   return response.json()
 }
 
+// Anexa ?childId= quando o responsável/professor age sobre uma criança
+function withChild(endpoint: string, childId?: string): string {
+  if (!childId) return endpoint
+  const separator = endpoint.includes("?") ? "&" : "?"
+  return `${endpoint}${separator}childId=${encodeURIComponent(childId)}`
+}
+
 // ============ AUTENTICAÇÃO ============
+export type UserRole = "parent" | "child" | "teacher"
+
+export interface UserProfile {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  parentId?: string | null
+  currentStars?: number
+  currentStreak?: number
+}
+
 export const authApi = {
-  register: (data: { name: string; email: string; password: string }) =>
+  register: (data: { name: string; email: string; password: string; role?: "parent" | "teacher" }) =>
     fetchWithAuth("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
@@ -67,27 +86,114 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
-  getProfile: () => fetchWithAuth("/api/auth/profile"),
+  getProfile: (): Promise<UserProfile> => fetchWithAuth("/api/auth/profile"),
+}
+
+// ============ CRIANÇAS (visão do responsável) ============
+export interface Child {
+  id: string
+  name: string
+  username: string
+  inviteCode: string
+  currentStars: number
+  currentStreak: number
+  createdAt: string
+}
+
+export interface BehaviorReport {
+  id: string
+  date: string
+  rating: number | null
+  text: string
+  starsAwarded: number
+  teacherName?: string
+  createdAt: string
+}
+
+export const childrenApi = {
+  list: (): Promise<Child[]> => fetchWithAuth("/api/children"),
+
+  create: (data: { name: string; username: string; password: string }): Promise<Child> =>
+    fetchWithAuth("/api/children", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: { name?: string; password?: string }): Promise<Child> =>
+    fetchWithAuth(`/api/children/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchWithAuth(`/api/children/${id}`, {
+      method: "DELETE",
+    }),
+
+  reports: (id: string): Promise<BehaviorReport[]> =>
+    fetchWithAuth(`/api/children/${id}/reports`),
+}
+
+// ============ PROFESSOR ============
+export interface Student {
+  id: string
+  name: string
+  currentStars: number
+  currentStreak: number
+}
+
+export const teacherApi = {
+  listStudents: (): Promise<Student[]> => fetchWithAuth("/api/teacher/students"),
+
+  addStudent: (inviteCode: string): Promise<Student> =>
+    fetchWithAuth("/api/teacher/students", {
+      method: "POST",
+      body: JSON.stringify({ inviteCode }),
+    }),
+
+  removeStudent: (childId: string) =>
+    fetchWithAuth(`/api/teacher/students/${childId}`, {
+      method: "DELETE",
+    }),
+
+  giveStars: (childId: string, data: { amount: number; reason: string }) =>
+    fetchWithAuth(`/api/teacher/students/${childId}/stars`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  createReport: (
+    childId: string,
+    data: { date?: string; rating?: number; text: string; starsAwarded?: number },
+  ): Promise<BehaviorReport & { currentStars: number }> =>
+    fetchWithAuth(`/api/teacher/students/${childId}/reports`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  listReports: (childId: string): Promise<BehaviorReport[]> =>
+    fetchWithAuth(`/api/teacher/students/${childId}/reports`),
 }
 
 // ============ ESTRELAS ============
 export const starsApi = {
-  getBalance: async (): Promise<{ stars: number }> => {
-    const data = await fetchWithAuth("/api/stars")
+  getBalance: async (childId?: string): Promise<{ stars: number }> => {
+    const data = await fetchWithAuth(withChild("/api/stars", childId))
     // API retorna { currentStars }, mapeamos para { stars }
     return { stars: data.currentStars ?? data.stars ?? 0 }
   },
 
-  add: (amount: number) =>
+  // Ajustes manuais: apenas responsável, sempre sobre uma criança
+  add: (childId: string, amount: number, reason?: string) =>
     fetchWithAuth("/api/stars/add", {
       method: "PATCH",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ childId, amount, reason }),
     }),
 
-  subtract: (amount: number) =>
+  subtract: (childId: string, amount: number, reason?: string) =>
     fetchWithAuth("/api/stars/subtract", {
       method: "PATCH",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ childId, amount, reason }),
     }),
 }
 
@@ -122,8 +228,8 @@ function mapTask(apiTask: ApiTask): Task {
 }
 
 export const tasksApi = {
-  list: async (): Promise<Task[]> => {
-    const data: ApiTask[] = await fetchWithAuth("/api/tasks")
+  list: async (childId?: string): Promise<Task[]> => {
+    const data: ApiTask[] = await fetchWithAuth(withChild("/api/tasks", childId))
     return data.map(mapTask)
   },
 
@@ -156,18 +262,18 @@ export const tasksApi = {
       method: "DELETE",
     }),
 
-  complete: (id: string) =>
-    fetchWithAuth(`/api/tasks/${id}/complete`, {
+  complete: (id: string, childId?: string) =>
+    fetchWithAuth(withChild(`/api/tasks/${id}/complete`, childId), {
       method: "PATCH",
     }),
 
-  uncomplete: (id: string) =>
-    fetchWithAuth(`/api/tasks/${id}/uncomplete`, {
+  uncomplete: (id: string, childId?: string) =>
+    fetchWithAuth(withChild(`/api/tasks/${id}/uncomplete`, childId), {
       method: "PATCH",
     }),
 
-  resetDay: () =>
-    fetchWithAuth("/api/tasks/reset", {
+  resetDay: (childId?: string) =>
+    fetchWithAuth(withChild("/api/tasks/reset", childId), {
       method: "POST",
     }),
 }
@@ -200,10 +306,10 @@ export const penaltiesApi = {
       method: "DELETE",
     }),
 
-  apply: (penaltyId: string) =>
+  apply: (penaltyId: string, childId: string) =>
     fetchWithAuth("/api/penalties/apply", {
       method: "POST",
-      body: JSON.stringify({ penaltyId }),
+      body: JSON.stringify({ penaltyId, childId }),
     }),
 }
 
@@ -236,8 +342,8 @@ export const rewardsApi = {
       method: "DELETE",
     }),
 
-  redeem: (id: string) =>
-    fetchWithAuth(`/api/rewards/${id}/redeem`, {
+  redeem: (id: string, childId?: string) =>
+    fetchWithAuth(withChild(`/api/rewards/${id}/redeem`, childId), {
       method: "POST",
     }),
 }
@@ -252,12 +358,14 @@ export interface HistoryEntry {
 }
 
 export const historyApi = {
-  list: (): Promise<HistoryEntry[]> => fetchWithAuth("/api/history"),
+  list: (childId?: string): Promise<HistoryEntry[]> =>
+    fetchWithAuth(withChild("/api/history", childId)),
 
-  getByRange: (startDate: string, endDate: string) =>
-    fetchWithAuth(`/api/history/range?startDate=${startDate}&endDate=${endDate}`),
+  getByRange: (startDate: string, endDate: string, childId?: string): Promise<HistoryEntry[]> =>
+    fetchWithAuth(withChild(`/api/history/range?startDate=${startDate}&endDate=${endDate}`, childId)),
 
-  getStatistics: () => fetchWithAuth("/api/history/statistics"),
+  getStatistics: (childId?: string) =>
+    fetchWithAuth(withChild("/api/history/statistics", childId)),
 }
 
 // ============ ROTINAS ============
@@ -298,8 +406,8 @@ function mapRoutine(apiRoutine: ApiRoutine): RoutineItem {
 }
 
 export const routinesApi = {
-  list: async (): Promise<RoutineItem[]> => {
-    const data: ApiRoutine[] = await fetchWithAuth("/api/routines")
+  list: async (childId?: string): Promise<RoutineItem[]> => {
+    const data: ApiRoutine[] = await fetchWithAuth(withChild("/api/routines", childId))
     return data.map(mapRoutine)
   },
 
@@ -338,18 +446,18 @@ export const routinesApi = {
       method: "DELETE",
     }),
 
-  complete: (id: string) =>
-    fetchWithAuth(`/api/routines/${id}/complete`, {
+  complete: (id: string, childId?: string) =>
+    fetchWithAuth(withChild(`/api/routines/${id}/complete`, childId), {
       method: "PATCH",
     }),
 
-  uncomplete: (id: string) =>
-    fetchWithAuth(`/api/routines/${id}/uncomplete`, {
+  uncomplete: (id: string, childId?: string) =>
+    fetchWithAuth(withChild(`/api/routines/${id}/uncomplete`, childId), {
       method: "PATCH",
     }),
 
-  getTodayProgress: (): Promise<{ total: number; completed: number; completedIds: string[] }> =>
-    fetchWithAuth("/api/routines/progress/today"),
+  getTodayProgress: (childId?: string): Promise<{ total: number; completed: number; completedIds: string[] }> =>
+    fetchWithAuth(withChild("/api/routines/progress/today", childId)),
 }
 
 // ============ STREAKS ============
@@ -360,12 +468,8 @@ export interface StreakData {
 }
 
 export const streaksApi = {
-  get: (): Promise<StreakData> => fetchWithAuth("/api/streaks"),
-
-  update: () =>
-    fetchWithAuth("/api/streaks/update", {
-      method: "POST",
-    }),
+  get: (childId?: string): Promise<StreakData> =>
+    fetchWithAuth(withChild("/api/streaks", childId)),
 }
 
 // ============ MYSTERY BOX ============
@@ -386,8 +490,8 @@ export interface MysteryBoxConfig {
 export const mysteryBoxApi = {
   getConfig: (): Promise<MysteryBoxConfig> => fetchWithAuth("/api/mystery-box"),
 
-  open: (): Promise<{ prize: MysteryPrize; newBalance: number }> =>
-    fetchWithAuth("/api/mystery-box/open", {
+  open: (childId?: string): Promise<{ prize: MysteryPrize; newBalance: number }> =>
+    fetchWithAuth(withChild("/api/mystery-box/open", childId), {
       method: "POST",
     }),
 

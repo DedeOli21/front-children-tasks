@@ -1,19 +1,19 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { authApi } from "@/lib/api"
+import { authApi, type UserProfile, type UserRole } from "@/lib/api"
 
-interface User {
-  id: string
-  name: string
-  email: string
-  role: "admin" | "user"
+// Papéis antigos do backend legado
+function normalizeRole(role: string): UserRole {
+  if (role === "admin") return "parent"
+  if (role === "user") return "child"
+  return role as UserRole
 }
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -27,7 +27,7 @@ export function useAuth() {
 
       try {
         const profile = await authApi.getProfile()
-        setUser(profile)
+        setUser({ ...profile, role: normalizeRole(profile.role) })
         setIsAuthenticated(true)
       } catch {
         localStorage.removeItem("token")
@@ -40,9 +40,11 @@ export function useAuth() {
     checkAuth()
   }, [])
 
-  const login = useCallback((token: string, userData?: User) => {
+  const login = useCallback((token: string, userData?: UserProfile) => {
     localStorage.setItem("token", token)
-    if (userData) setUser(userData)
+    if (userData) {
+      setUser({ ...userData, role: normalizeRole(userData.role) })
+    }
     setIsAuthenticated(true)
   }, [])
 
@@ -52,13 +54,16 @@ export function useAuth() {
     setUser(null)
   }, [])
 
-  const isAdmin = user?.role === "admin"
+  const role = user?.role ?? null
 
   return {
     isAuthenticated,
     isLoading,
     user,
-    isAdmin,
+    role,
+    isParent: role === "parent",
+    isChild: role === "child",
+    isTeacher: role === "teacher",
     login,
     logout,
   }

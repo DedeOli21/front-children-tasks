@@ -368,36 +368,6 @@ export const streaksApi = {
     }),
 }
 
-// ============ AVATAR ============
-export interface AvatarItem {
-  id: string
-  name: string
-  emoji: string
-  type: "hat" | "accessory" | "background" | "outfit"
-  cost: number
-  owned: boolean
-  equipped: boolean
-}
-
-export const avatarApi = {
-  getItems: (): Promise<AvatarItem[]> => fetchWithAuth("/api/avatar/items"),
-
-  purchase: (itemId: string) =>
-    fetchWithAuth(`/api/avatar/items/${itemId}/purchase`, {
-      method: "POST",
-    }),
-
-  equip: (itemId: string) =>
-    fetchWithAuth(`/api/avatar/items/${itemId}/equip`, {
-      method: "POST",
-    }),
-
-  unequip: (itemId: string) =>
-    fetchWithAuth(`/api/avatar/items/${itemId}/unequip`, {
-      method: "POST",
-    }),
-}
-
 // ============ MYSTERY BOX ============
 export interface MysteryPrize {
   id: string

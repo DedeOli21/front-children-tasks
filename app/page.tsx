@@ -11,10 +11,9 @@ import { LoginForm } from "@/components/auth/login-form"
 import { RegisterForm } from "@/components/auth/register-form"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { StreakDisplay } from "@/components/streak-display"
-import { AvatarShop, type AvatarItem } from "@/components/avatar-shop"
 import { MysteryBox } from "@/components/mystery-box"
 import { useAuth } from "@/hooks/use-auth"
-import { Star, Gift, AlertTriangle, Clock, Loader2, LogOut, Settings, Sparkles, Package } from "lucide-react"
+import { Star, Gift, AlertTriangle, Clock, Loader2, LogOut, Settings, Package } from "lucide-react"
 import {
   starsApi,
   tasksApi,
@@ -22,7 +21,6 @@ import {
   rewardsApi,
   routinesApi,
   streaksApi,
-  avatarApi,
   mysteryBoxApi,
   type Task,
   type Penalty,
@@ -81,22 +79,6 @@ const FALLBACK_ROUTINES: RoutineItem[] = [
   { id: "dormir", time: "21:05", title: "Dormir", emoji: "😴", period: "evening" },
 ]
 
-const FALLBACK_AVATAR_ITEMS: AvatarItem[] = [
-  { id: "hat-crown", name: "Coroa", emoji: "👑", type: "hat", cost: 8, owned: false, equipped: false },
-  { id: "hat-cap", name: "Bone", emoji: "🧢", type: "hat", cost: 5, owned: true, equipped: true },
-  { id: "hat-wizard", name: "Mago", emoji: "🎩", type: "hat", cost: 12, owned: false, equipped: false },
-  { id: "hat-party", name: "Festa", emoji: "🥳", type: "hat", cost: 6, owned: false, equipped: false },
-  { id: "acc-glasses", name: "Oculos", emoji: "😎", type: "accessory", cost: 4, owned: true, equipped: false },
-  { id: "acc-bow", name: "Gravata", emoji: "🎀", type: "accessory", cost: 5, owned: false, equipped: false },
-  { id: "acc-medal", name: "Medalha", emoji: "🏅", type: "accessory", cost: 10, owned: false, equipped: false },
-  { id: "bg-stars", name: "Estrelas", emoji: "✨", type: "background", cost: 6, owned: false, equipped: false },
-  { id: "bg-rainbow", name: "Arco-iris", emoji: "🌈", type: "background", cost: 8, owned: false, equipped: false },
-  { id: "bg-space", name: "Espaco", emoji: "🚀", type: "background", cost: 10, owned: false, equipped: false },
-  { id: "out-ninja", name: "Ninja", emoji: "🥷", type: "outfit", cost: 15, owned: false, equipped: false },
-  { id: "out-superhero", name: "Heroi", emoji: "🦸", type: "outfit", cost: 20, owned: false, equipped: false },
-  { id: "out-robot", name: "Robo", emoji: "🤖", type: "outfit", cost: 18, owned: false, equipped: false },
-]
-
 const FALLBACK_MYSTERY_PRIZES: MysteryPrize[] = [
   { id: "p1", name: "Bala", emoji: "🍬", rarity: "common", description: "Uma bala gostosa!" },
   { id: "p2", name: "Adesivo", emoji: "🏷️", rarity: "common", description: "Um adesivo legal!" },
@@ -113,9 +95,7 @@ export default function HomePage() {
   const [authView, setAuthView] = useState<"login" | "register">("login")
   const [showAdminView, setShowAdminView] = useState(false)
 
-  const [activeTab, setActiveTab] = useState<"tasks" | "rewards" | "penalties" | "routine" | "avatar" | "mystery">(
-    "tasks",
-  )
+  const [activeTab, setActiveTab] = useState<"tasks" | "rewards" | "penalties" | "routine" | "mystery">("tasks")
   const [stars, setStars] = useState(0)
   const [streak, setStreak] = useState(3) // Demo streak
   const [showConfetti, setShowConfetti] = useState(false)
@@ -126,7 +106,6 @@ export default function HomePage() {
   const [penalties, setPenalties] = useState<Penalty[]>(FALLBACK_PENALTIES)
   const [rewards, setRewards] = useState<Reward[]>(FALLBACK_REWARDS)
   const [routines, setRoutines] = useState<RoutineItem[]>(FALLBACK_ROUTINES)
-  const [avatarItems, setAvatarItems] = useState<AvatarItem[]>(FALLBACK_AVATAR_ITEMS)
   const [mysteryPrizes, setMysteryPrizes] = useState<MysteryPrize[]>(FALLBACK_MYSTERY_PRIZES)
   const [mysteryBoxCost, setMysteryBoxCost] = useState(5)
 
@@ -138,7 +117,7 @@ export default function HomePage() {
 
     async function loadData() {
       try {
-        const [starsData, tasksData, penaltiesData, rewardsData, routinesData, streakData, avatarData, mysteryBoxConfig] =
+        const [starsData, tasksData, penaltiesData, rewardsData, routinesData, streakData, mysteryBoxConfig] =
           await Promise.all([
             starsApi.getBalance(),
             tasksApi.list(),
@@ -146,7 +125,6 @@ export default function HomePage() {
             rewardsApi.list(),
             routinesApi.list(),
             streaksApi.get().catch(() => ({ currentStreak: 3 })),
-            avatarApi.getItems().catch(() => FALLBACK_AVATAR_ITEMS),
             mysteryBoxApi.getConfig().catch(() => ({ cost: 5, prizes: FALLBACK_MYSTERY_PRIZES })),
           ])
 
@@ -156,7 +134,6 @@ export default function HomePage() {
         setRewards(rewardsData.length > 0 ? rewardsData : FALLBACK_REWARDS)
         setRoutines(routinesData.length > 0 ? routinesData : FALLBACK_ROUTINES)
         setStreak(streakData.currentStreak ?? 3)
-        setAvatarItems(avatarData.length > 0 ? avatarData : FALLBACK_AVATAR_ITEMS)
         setMysteryPrizes(mysteryBoxConfig.prizes.length > 0 ? mysteryBoxConfig.prizes : FALLBACK_MYSTERY_PRIZES)
         setMysteryBoxCost(mysteryBoxConfig.cost || 5)
         setUseLocalMode(false)
@@ -400,48 +377,6 @@ export default function HomePage() {
     }
   }
 
-  // ============ AVATAR HANDLERS ============
-  const handleAvatarPurchase = async (itemId: string, cost: number) => {
-    if (stars < cost) return
-
-    setStars((prev) => prev - cost)
-    setAvatarItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, owned: true } : item)))
-    setShowConfetti(true)
-    setTimeout(() => setShowConfetti(false), 2000)
-
-    if (!useLocalMode) {
-      try {
-        await avatarApi.purchase(itemId)
-      } catch (error) {
-        console.error("Erro ao comprar item:", error)
-        setStars((prev) => prev + cost)
-        setAvatarItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, owned: false } : item)))
-      }
-    }
-  }
-
-  const handleAvatarEquip = async (itemId: string) => {
-    const item = avatarItems.find((i) => i.id === itemId)
-    if (!item || !item.owned) return
-
-    setAvatarItems((prev) =>
-      prev.map((i) => {
-        if (i.type === item.type) {
-          return { ...i, equipped: i.id === itemId }
-        }
-        return i
-      }),
-    )
-
-    if (!useLocalMode) {
-      try {
-        await avatarApi.equip(itemId)
-      } catch (error) {
-        console.error("Erro ao equipar item:", error)
-      }
-    }
-  }
-
   // ============ MYSTERY BOX HANDLER ============
   const handleMysteryBoxOpen = async (cost: number): Promise<MysteryPrize> => {
     if (useLocalMode) {
@@ -660,7 +595,7 @@ export default function HomePage() {
         <StreakDisplay streak={streak} />
       </div>
 
-      <nav className="sticky top-16 z-30 mx-4 grid grid-cols-6 gap-1 rounded-2xl bg-card p-2 shadow-lg">
+      <nav className="sticky top-16 z-30 mx-4 grid grid-cols-5 gap-1 rounded-2xl bg-card p-2 shadow-lg">
         <button
           onClick={() => setActiveTab("tasks")}
           className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 font-bold transition-all duration-300 ${
@@ -706,17 +641,6 @@ export default function HomePage() {
           <span className="text-[10px]">Loja</span>
         </button>
         <button
-          onClick={() => setActiveTab("avatar")}
-          className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 font-bold transition-all duration-300 ${
-            activeTab === "avatar"
-              ? "bg-purple-500 text-white shadow-md"
-              : "bg-muted text-muted-foreground hover:bg-secondary"
-          }`}
-        >
-          <Sparkles className="h-4 w-4" />
-          <span className="text-[10px]">Avatar</span>
-        </button>
-        <button
           onClick={() => setActiveTab("mystery")}
           className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 font-bold transition-all duration-300 ${
             activeTab === "mystery"
@@ -743,8 +667,6 @@ export default function HomePage() {
           <PenaltyList penalties={penalties} onPenalty={handlePenalty} />
         ) : activeTab === "rewards" ? (
           <RewardsShop stars={stars} rewards={rewards} onRedeem={handleRewardRedeem} />
-        ) : activeTab === "avatar" ? (
-          <AvatarShop stars={stars} items={avatarItems} onPurchase={handleAvatarPurchase} onEquip={handleAvatarEquip} />
         ) : (
           <MysteryBox stars={stars} cost={mysteryBoxCost} prizes={mysteryPrizes} onOpen={handleMysteryBoxOpen} />
         )}

@@ -70,7 +70,7 @@ function withChild(endpoint: string, childId?: string): string {
 }
 
 // ============ AUTENTICAÇÃO ============
-export type UserRole = "parent" | "child" | "teacher"
+export type UserRole = "parent" | "child" | "teacher" | "therapist"
 
 export interface UserProfile {
   id: string
@@ -185,12 +185,45 @@ export const teacherApi = {
 }
 
 // ============ ESTRELAS ============
+// Bonificação sugerida pela terapeuta, pendente de aprovação do responsável
+export interface StarRequest {
+  id: string
+  childId: string
+  childName?: string
+  amount: number
+  reason: string
+  status: "pending" | "approved" | "rejected"
+  therapistName?: string
+  createdAt: string
+  resolvedAt?: string | null
+}
+
 export const starsApi = {
   getBalance: async (childId?: string): Promise<{ stars: number }> => {
     const data = await fetchWithAuth(withChild("/api/stars", childId))
     // API retorna { currentStars }, mapeamos para { stars }
     return { stars: data.currentStars ?? data.stars ?? 0 }
   },
+
+  // Terapeuta sugere estrelas (motivo obrigatório)
+  suggest: (data: { childId: string; amount: number; reason: string }): Promise<StarRequest & { message: string }> =>
+    fetchWithAuth("/api/stars/suggest", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Responsável: caixa de aprovação · Criança: as próprias pendentes
+  listRequests: (status?: StarRequest["status"]): Promise<StarRequest[]> =>
+    fetchWithAuth(status ? `/api/stars/requests?status=${status}` : "/api/stars/requests"),
+
+  // Sugestões enviadas pela terapeuta
+  listMyRequests: (): Promise<StarRequest[]> => fetchWithAuth("/api/stars/requests/mine"),
+
+  approveRequest: (id: string): Promise<StarRequest & { currentStars: number; message: string }> =>
+    fetchWithAuth(`/api/stars/approve/${id}`, { method: "PATCH" }),
+
+  rejectRequest: (id: string): Promise<StarRequest & { message: string }> =>
+    fetchWithAuth(`/api/stars/reject/${id}`, { method: "PATCH" }),
 
   // Ajustes manuais: apenas responsável, sempre sobre uma criança
   add: (childId: string, amount: number, reason?: string) =>
@@ -631,13 +664,129 @@ export const routinesApi = {
 // ============ STREAKS ============
 export interface StreakData {
   currentStreak: number
+  multiplier: number
   longestStreak: number
-  lastCompletedDate: string | null
+  streakFreezes: number
+  lastStreakDate: string | null
+  nextMultiplierThreshold: number | null
 }
 
 export const streaksApi = {
   get: (childId?: string): Promise<StreakData> =>
     fetchWithAuth(withChild("/api/streaks", childId)),
+
+  // Responsável concede "congelamentos" ao inventário da criança
+  grantFreezes: (childId: string, amount: number): Promise<{ streakFreezes: number; message: string }> =>
+    fetchWithAuth("/api/streaks/freezes", {
+      method: "PATCH",
+      body: JSON.stringify({ childId, amount }),
+    }),
+}
+
+// ============ TERAPEUTAS ============
+export interface TherapistLink {
+  therapistId: string
+  name: string
+  email: string
+  childId: string
+  childName?: string
+  linkedAt: string
+}
+
+export interface TimelineEvent {
+  kind: "history" | "school_report" | "observation"
+  at: string
+  type?: string
+  description?: string
+  starsChange?: number
+  date?: string
+  rating?: number | null
+  text?: string
+  starsAwarded?: number
+  authorName?: string
+  authorRole?: UserRole
+}
+
+export interface TherapistTimeline {
+  child: { id: string; name: string; currentStars: number; currentStreak: number; longestStreak: number }
+  since: string
+  events: TimelineEvent[]
+}
+
+export const therapistsApi = {
+  // Responsável cria/reaproveita a conta e vincula à criança
+  createOrLink: (data: { childId: string; email: string; name?: string; password?: string }) =>
+    fetchWithAuth("/api/therapists", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  listForParent: (): Promise<TherapistLink[]> => fetchWithAuth("/api/therapists"),
+
+  unlink: (therapistId: string, childId: string) =>
+    fetchWithAuth(`/api/therapists/${therapistId}/children/${childId}`, {
+      method: "DELETE",
+    }),
+
+  // Visão da terapeuta
+  patients: (): Promise<Student[]> => fetchWithAuth("/api/therapists/patients"),
+
+  timeline: (childId: string, days?: number): Promise<TherapistTimeline> =>
+    fetchWithAuth(`/api/therapists/patients/${childId}/timeline${days ? `?days=${days}` : ""}`),
+
+  analytics: (childId: string, days?: number) =>
+    fetchWithAuth(`/api/therapists/patients/${childId}/analytics${days ? `?days=${days}` : ""}`),
+}
+
+// ============ OBSERVAÇÕES (adults-only) ============
+export interface Observation {
+  id: string
+  date: string
+  type: "clinical" | "behavioral" | "general"
+  text: string
+  authorName?: string
+  authorRole?: UserRole
+  createdAt: string
+}
+
+export const observationsApi = {
+  create: (data: { childId: string; text: string; type?: Observation["type"]; date?: string }): Promise<Observation> =>
+    fetchWithAuth("/api/observations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  list: (childId: string): Promise<Observation[]> =>
+    fetchWithAuth(`/api/observations?childId=${childId}`),
+}
+
+// ============ MENSAGENS (professor ↔ terapeuta) ============
+export interface ChatMessage {
+  id: string
+  childId: string
+  text: string
+  senderId: string
+  senderName?: string
+  senderRole?: UserRole
+  mine: boolean
+  readAt: string | null
+  createdAt: string
+}
+
+export const messagesApi = {
+  send: (data: { childId: string; recipientId: string; text: string }): Promise<ChatMessage> =>
+    fetchWithAuth("/api/messages", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  contacts: (childId: string): Promise<{ id: string; name: string; role: UserRole }[]> =>
+    fetchWithAuth(`/api/messages/contacts?childId=${childId}`),
+
+  thread: (childId: string, withUserId: string): Promise<ChatMessage[]> =>
+    fetchWithAuth(`/api/messages/thread?childId=${childId}&withUserId=${withUserId}`),
+
+  unreadCount: (): Promise<{ unread: number }> => fetchWithAuth("/api/messages/unread-count"),
 }
 
 // ============ MYSTERY BOX ============

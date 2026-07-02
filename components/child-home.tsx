@@ -26,6 +26,8 @@ import {
   type RoutineItem,
   type MysteryPrize,
   type Mission,
+  type StarRequest,
+  type StreakData,
 } from "@/lib/api"
 
 type ChildTab = "tasks" | "routine" | "penalties" | "rewards" | "mystery"
@@ -41,6 +43,9 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   const [activeTab, setActiveTab] = useState<ChildTab>("tasks")
   const [stars, setStars] = useState(0)
   const [streak, setStreak] = useState(0)
+  const [longestStreak, setLongestStreak] = useState(0)
+  const [freezes, setFreezes] = useState(0)
+  const [pendingBonuses, setPendingBonuses] = useState<StarRequest[]>([])
   const [showConfetti, setShowConfetti] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -57,7 +62,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     setIsLoading(true)
     setLoadError(false)
     try {
-      const [starsData, tasksData, missionsData, penaltiesData, rewardsData, routinesData, streakData, mysteryBoxConfig] =
+      const [starsData, tasksData, missionsData, penaltiesData, rewardsData, routinesData, streakData, mysteryBoxConfig, bonusesData] =
         await Promise.all([
           starsApi.getBalance(),
           tasksApi.list(),
@@ -65,8 +70,9 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           penaltiesApi.list(),
           rewardsApi.list(),
           routinesApi.list(),
-          streaksApi.get().catch(() => ({ currentStreak: 0 })),
+          streaksApi.get().catch(() => null as StreakData | null),
           mysteryBoxApi.getConfig().catch(() => ({ cost: 5, prizes: [] as MysteryPrize[] })),
+          starsApi.listRequests().catch(() => [] as StarRequest[]),
         ])
 
       setStars(starsData.stars ?? 0)
@@ -75,7 +81,10 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       setPenalties(penaltiesData)
       setRewards(rewardsData)
       setRoutines(routinesData)
-      setStreak(streakData.currentStreak ?? 0)
+      setStreak(streakData?.currentStreak ?? 0)
+      setLongestStreak(streakData?.longestStreak ?? 0)
+      setFreezes(streakData?.streakFreezes ?? 0)
+      setPendingBonuses(bonusesData)
       setMysteryPrizes(mysteryBoxConfig.prizes)
       setMysteryBoxCost(mysteryBoxConfig.cost || 5)
     } catch (error) {
@@ -222,7 +231,18 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       {/* Star Panel and Streak */}
       <div className="space-y-4 px-4 py-6">
         <StarPanel stars={stars} />
-        <StreakDisplay streak={streak} />
+        <StreakDisplay streak={streak} longestStreak={longestStreak} freezes={freezes} />
+
+        {/* Estrelas da terapeuta aguardando o chefe aprovar */}
+        {pendingBonuses.length > 0 && (
+          <div className="rounded-2xl bg-gradient-to-r from-purple-100 to-fuchsia-100 p-4 shadow-lg ring-2 ring-purple-200">
+            <p className="font-black text-purple-700">
+              💜 Você recebeu {pendingBonuses.reduce((sum, b) => sum + b.amount, 0)} estrela(s) da sua
+              terapeuta!
+            </p>
+            <p className="mt-1 text-sm font-semibold text-purple-500">Aguardando o chefe aprovar! 🕐</p>
+          </div>
+        )}
       </div>
 
       <nav className="sticky top-16 z-30 mx-4 grid grid-cols-5 gap-1 rounded-2xl bg-card p-2 shadow-lg">

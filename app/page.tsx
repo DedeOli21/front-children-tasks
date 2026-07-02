@@ -7,11 +7,12 @@ import { RegisterForm } from "@/components/auth/register-form"
 import { ChildHome } from "@/components/child-home"
 import { ParentDashboard } from "@/components/parent/parent-dashboard"
 import { TeacherPortal } from "@/components/teacher/teacher-portal"
+import { TherapistPortal } from "@/components/therapist/therapist-portal"
 import { useAuth } from "@/hooks/use-auth"
 
 // Roteia para a experiência certa conforme o papel:
 // criança → visão gamificada; responsável → painel administrativo;
-// professor → portal de acompanhamento escolar.
+// professor → portal escolar; terapeuta → timeline e bonificações.
 export default function HomePage() {
   const { isAuthenticated, isLoading, user, role, login, logout } = useAuth()
   const [authView, setAuthView] = useState<"login" | "register">("login")
@@ -40,6 +41,10 @@ export default function HomePage() {
 
   if (role === "teacher") {
     return <TeacherPortal teacherName={user.name} onLogout={logout} />
+  }
+
+  if (role === "therapist") {
+    return <TherapistPortal therapistName={user.name} onLogout={logout} />
   }
 
   return <ChildHome childName={user.name} onLogout={logout} />

@@ -31,6 +31,8 @@ import {
   rewardsApi,
   routinesApi,
   starsApi,
+  streaksApi,
+  therapistsApi,
   mysteryBoxApi,
   type Child,
   type BehaviorReport,
@@ -39,6 +41,7 @@ import {
   type Reward,
   type RoutineItem,
   type MysteryPrize,
+  type TherapistLink,
 } from "@/lib/api"
 
 type ParentTab = "monitor" | "planner" | "reports" | "history" | "manage"
@@ -57,7 +60,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   const [children, setChildren] = useState<Child[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [showAddChild, setShowAddChild] = useState(false)
+  const [showAddTherapist, setShowAddTherapist] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
+  const [therapists, setTherapists] = useState<TherapistLink[]>([])
 
   // Dados da criança selecionada
   const [childTasks, setChildTasks] = useState<Task[]>([])
@@ -114,6 +119,15 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     })
     childrenApi.reports(selectedChildId).then(setReports).catch(() => setReports([]))
   }, [selectedChildId])
+
+  // Terapeutas vinculadas à família
+  const loadTherapists = useCallback(() => {
+    therapistsApi.listForParent().then(setTherapists).catch(() => setTherapists([]))
+  }, [])
+
+  useEffect(() => {
+    loadTherapists()
+  }, [loadTherapists])
 
   // ============ AÇÕES SOBRE A CRIANÇA ============
   const updateChildStars = (childId: string, stars: number) => {
@@ -188,6 +202,26 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     navigator.clipboard.writeText(selectedChild.inviteCode)
     setCopiedCode(true)
     setTimeout(() => setCopiedCode(false), 2000)
+  }
+
+  const handleGrantFreeze = async () => {
+    if (!selectedChildId) return
+    try {
+      const result = await streaksApi.grantFreezes(selectedChildId, 1)
+      toast.success(result.message)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível conceder o congelamento")
+    }
+  }
+
+  const handleUnlinkTherapist = async (therapistId: string, childId: string) => {
+    try {
+      await therapistsApi.unlink(therapistId, childId)
+      toast.success("Acesso da terapeuta removido")
+      loadTherapists()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível remover o acesso")
+    }
   }
 
   // ============ HANDLERS DE CATÁLOGO (AdminDashboard) ============
@@ -533,7 +567,57 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
                   >
                     <Plus className="h-5 w-5" strokeWidth={3} />
                   </button>
+                  <button
+                    onClick={handleGrantFreeze}
+                    title="Conceder 1 congelamento de streak (protege a sequência num dia ruim)"
+                    className="ml-auto flex items-center gap-1 rounded-xl bg-sky-100 px-3 py-2 text-sm font-bold text-sky-600 transition-colors hover:bg-sky-200"
+                  >
+                    ❄️ +1 freeze
+                  </button>
                 </div>
+              </div>
+
+              {/* Terapeuta da criança */}
+              <div className="rounded-2xl bg-white p-4 shadow-lg sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase text-slate-400">Terapeuta (acesso opcional)</p>
+                  <button
+                    onClick={() => setShowAddTherapist(true)}
+                    className="flex items-center gap-1 rounded-lg bg-purple-100 px-2 py-1 text-xs font-bold text-purple-700 hover:bg-purple-200"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Vincular
+                  </button>
+                </div>
+                {therapists.filter((t) => t.childId === selectedChild.id).length === 0 ? (
+                  <p className="mt-2 text-sm text-slate-400">
+                    Nenhuma terapeuta vinculada a {selectedChild.name}. Ela poderá sugerir estrelas
+                    (com sua aprovação), registrar notas e falar com o professor.
+                  </p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {therapists
+                      .filter((t) => t.childId === selectedChild.id)
+                      .map((link) => (
+                        <div
+                          key={`${link.therapistId}-${link.childId}`}
+                          className="flex items-center gap-3 rounded-xl bg-purple-50 p-3"
+                        >
+                          <span className="text-xl">💜</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-slate-700">{link.name}</p>
+                            <p className="truncate text-xs text-slate-400">{link.email}</p>
+                          </div>
+                          <button
+                            onClick={() => handleUnlinkTherapist(link.therapistId, link.childId)}
+                            className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-bold text-red-500 hover:bg-red-50"
+                          >
+                            Remover acesso
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -661,7 +745,109 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
           }}
         />
       )}
+
+      {/* Modal: vincular terapeuta */}
+      {showAddTherapist && selectedChild && (
+        <AddTherapistModal
+          child={selectedChild}
+          onClose={() => setShowAddTherapist(false)}
+          onLinked={() => {
+            setShowAddTherapist(false)
+            loadTherapists()
+          }}
+        />
+      )}
     </main>
+  )
+}
+
+// ============ MODAL DE VÍNCULO DE TERAPEUTA ============
+interface AddTherapistModalProps {
+  child: Child
+  onClose: () => void
+  onLinked: () => void
+}
+
+function AddTherapistModal({ child, onClose, onLinked }: AddTherapistModalProps) {
+  const [email, setEmail] = useState("")
+  const [name, setName] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsSaving(true)
+    try {
+      const result = await therapistsApi.createOrLink({
+        childId: child.id,
+        email,
+        name: name || undefined,
+        password: password || undefined,
+      })
+      toast.success(result.message ?? "Terapeuta vinculada!")
+      onLinked()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao vincular terapeuta")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-black text-slate-700">Terapeuta de {child.name}</h2>
+          <button onClick={onClose} className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-xl bg-red-100 p-3 text-center text-sm font-semibold text-red-600">{error}</div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <input
+            type="email"
+            placeholder="Email da terapeuta"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 focus:border-purple-400 focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Nome (se for conta nova)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 focus:border-purple-400 focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Senha inicial (se for conta nova)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={6}
+            className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 focus:border-purple-400 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex items-center justify-center gap-2 rounded-xl bg-purple-500 py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+            Vincular terapeuta
+          </button>
+        </form>
+
+        <p className="mt-3 text-center text-xs text-slate-400">
+          Se a terapeuta já tem conta no app, basta o email — o vínculo é criado sem mudar a senha dela.
+        </p>
+      </div>
+    </div>
   )
 }
 

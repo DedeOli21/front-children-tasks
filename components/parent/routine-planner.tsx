@@ -18,9 +18,11 @@ import {
   missionsApi,
   templatesApi,
   tasksApi,
+  starsApi,
   type Mission,
   type RoutineTemplate,
   type PendingTaskApproval,
+  type StarRequest,
   type Child,
 } from "@/lib/api"
 
@@ -58,6 +60,7 @@ export function RoutinePlanner({ children, selectedChildId, onStarsChanged }: Ro
   const [weekMissions, setWeekMissions] = useState<Record<string, Mission[]>>({})
   const [pendingTasks, setPendingTasks] = useState<PendingTaskApproval[]>([])
   const [pendingMissions, setPendingMissions] = useState<Mission[]>([])
+  const [pendingStarRequests, setPendingStarRequests] = useState<StarRequest[]>([])
 
   const [selection, setSelection] = useState<Selection>(null)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
@@ -93,12 +96,14 @@ export function RoutinePlanner({ children, selectedChildId, onStarsChanged }: Ro
   }, [selectedChildId])
 
   const loadReview = useCallback(async () => {
-    const [tasksData, missionsData] = await Promise.all([
+    const [tasksData, missionsData, starRequestsData] = await Promise.all([
       tasksApi.pendingApproval().catch(() => [] as PendingTaskApproval[]),
       missionsApi.pendingApproval().catch(() => [] as Mission[]),
+      starsApi.listRequests().catch(() => [] as StarRequest[]),
     ])
     setPendingTasks(tasksData)
     setPendingMissions(missionsData)
+    setPendingStarRequests(starRequestsData)
   }, [])
 
   useEffect(() => {
@@ -114,7 +119,7 @@ export function RoutinePlanner({ children, selectedChildId, onStarsChanged }: Ro
     loadWeek()
   }, [loadWeek])
 
-  const pendingCount = pendingTasks.length + pendingMissions.length
+  const pendingCount = pendingTasks.length + pendingMissions.length + pendingStarRequests.length
 
   // ============ ALOCAÇÃO (clique ou drag-and-drop) ============
   const allocateToDay = async (sel: Selection, date: string) => {
@@ -181,6 +186,28 @@ export function RoutinePlanner({ children, selectedChildId, onStarsChanged }: Ro
       loadWeek()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível aprovar")
+    }
+  }
+
+  // Caixa de Aprovação de Estrelas (bonificações da terapeuta)
+  const handleApproveStarRequest = async (request: StarRequest) => {
+    try {
+      const result = await starsApi.approveRequest(request.id)
+      toast.success(result.message)
+      onStarsChanged(request.childId, result.currentStars)
+      setPendingStarRequests((prev) => prev.filter((p) => p.id !== request.id))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível aprovar")
+    }
+  }
+
+  const handleRejectStarRequest = async (request: StarRequest) => {
+    try {
+      const result = await starsApi.rejectRequest(request.id)
+      toast.success(result.message)
+      setPendingStarRequests((prev) => prev.filter((p) => p.id !== request.id))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível recusar")
     }
   }
 
@@ -281,6 +308,39 @@ export function RoutinePlanner({ children, selectedChildId, onStarsChanged }: Ro
                     <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
                     Aprovar +{mission.starsReward}
                   </button>
+                </div>
+              ))}
+              {/* Bonificações sugeridas pela terapeuta */}
+              {pendingStarRequests.map((request) => (
+                <div key={request.id} className="rounded-2xl bg-white p-4 shadow-lg ring-2 ring-purple-100">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">💜</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-700">
+                        +{request.amount} estrela(s) para {request.childName}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Terapeuta {request.therapistName ?? ""} ·{" "}
+                        {new Date(request.createdAt).toLocaleDateString("pt-BR")}
+                      </p>
+                      <p className="mt-1 text-sm italic text-slate-600">&ldquo;{request.reason}&rdquo;</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => handleRejectStarRequest(request)}
+                      className="flex-1 rounded-xl bg-slate-100 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200"
+                    >
+                      Recusar
+                    </button>
+                    <button
+                      onClick={() => handleApproveStarRequest(request)}
+                      className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-purple-500 py-2 text-sm font-black text-white shadow transition-transform hover:scale-[1.02]"
+                    >
+                      <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
+                      Aprovar +{request.amount}
+                    </button>
+                  </div>
                 </div>
               ))}
             </>

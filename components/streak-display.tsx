@@ -6,9 +6,12 @@ import { useEffect, useState } from "react"
 interface StreakDisplayProps {
   streak: number
   lastCompletedDate?: string
+  // Recorde histórico e inventário de congelamentos (gamificação)
+  longestStreak?: number
+  freezes?: number
 }
 
-export function StreakDisplay({ streak, lastCompletedDate }: StreakDisplayProps) {
+export function StreakDisplay({ streak, longestStreak = 0, freezes = 0 }: StreakDisplayProps) {
   const [isAnimating, setIsAnimating] = useState(false)
 
   useEffect(() => {
@@ -120,6 +123,31 @@ export function StreakDisplay({ streak, lastCompletedDate }: StreakDisplayProps)
           </div>
         )}
       </div>
+
+      {/* Recorde e congelamentos */}
+      {(longestStreak > 0 || freezes > 0) && (
+        <div className="relative z-10 mt-3 flex items-center gap-2">
+          {longestStreak > 0 && (
+            <span
+              className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold ${
+                isStreakActive ? "bg-white/20 text-white" : "bg-white/70 text-slate-600"
+              }`}
+            >
+              🏆 Recorde: {longestStreak} {longestStreak === 1 ? "dia" : "dias"}
+            </span>
+          )}
+          {freezes > 0 && (
+            <span
+              className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold ${
+                isStreakActive ? "bg-white/20 text-white" : "bg-white/70 text-sky-600"
+              }`}
+              title="Congelamentos protegem sua sequência num dia difícil"
+            >
+              <Snowflake className="h-3 w-3" /> {freezes} congelamento{freezes > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -64,6 +64,7 @@ export function useAuth() {
     isParent: role === "parent",
     isChild: role === "child",
     isTeacher: role === "teacher",
+    isTherapist: role === "therapist",
     login,
     logout,
   }

@@ -45,6 +45,15 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     headers,
   })
 
+  // Sessão expirada: 401 numa rota autenticada (não confundir com senha
+  // errada no login). Limpa o token e recarrega — page.tsx volta ao login.
+  const isAuthRoute = endpoint.startsWith("/api/auth/login") || endpoint.startsWith("/api/auth/register")
+  if (response.status === 401 && token && !isAuthRoute && typeof window !== "undefined") {
+    localStorage.removeItem("token")
+    window.location.reload()
+    throw new Error("Sessão expirada. Entre novamente.")
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: "Erro na requisição" }))
     throw new Error(error.message || "Erro na requisição")

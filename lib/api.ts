@@ -207,11 +207,16 @@ export const starsApi = {
 }
 
 // ============ TAREFAS ============
+// Fluxo de aprovação: pending → completed (criança marcou) → approved (responsável liberou as estrelas)
+export type TaskStatus = "pending" | "completed" | "approved"
+
 export interface Task {
   id: string
   title: string
   emoji: string
   completed: boolean
+  // Sempre presente nas tarefas vindas da API (mapTask); opcional em payloads de criação
+  status?: TaskStatus
   completedAt?: string
 }
 
@@ -221,6 +226,7 @@ interface ApiTask {
   title: string
   iconEmoji: string
   completedToday: boolean
+  status?: TaskStatus
   active: boolean
   createdAt: string
   updatedAt: string
@@ -233,7 +239,20 @@ function mapTask(apiTask: ApiTask): Task {
     title: apiTask.title,
     emoji: apiTask.iconEmoji,
     completed: apiTask.completedToday,
+    status: apiTask.status ?? (apiTask.completedToday ? "completed" : "pending"),
   }
+}
+
+// Execução aguardando aprovação do responsável
+export interface PendingTaskApproval {
+  logId: string
+  taskId: string
+  title: string
+  iconEmoji: string
+  date: string
+  childId: string
+  childName: string
+  completedAt: string | null
 }
 
 export const tasksApi = {
@@ -284,6 +303,146 @@ export const tasksApi = {
   resetDay: (childId?: string) =>
     fetchWithAuth(withChild("/api/tasks/reset", childId), {
       method: "POST",
+    }),
+
+  // Fila "Aguardando Revisão" do responsável
+  pendingApproval: (childId?: string): Promise<PendingTaskApproval[]> =>
+    fetchWithAuth(withChild("/api/tasks/pending-approval", childId)),
+
+  // Aprova a execução e libera as estrelas
+  approveLog: (
+    logId: string,
+  ): Promise<{ currentStars: number; starsEarned: number; message: string; childId: string }> =>
+    fetchWithAuth(`/api/tasks/logs/${logId}/approve`, {
+      method: "PATCH",
+    }),
+}
+
+// ============ MISSÕES (Diário de Bordo) ============
+export type MissionStatus = "inbox" | "scheduled" | "completed" | "approved"
+
+export interface Mission {
+  id: string
+  title: string
+  description: string | null
+  iconEmoji: string
+  status: MissionStatus
+  scheduledDate: string | null
+  starsReward: number
+  childId: string
+  childName?: string
+  teacherName?: string
+  completedAt?: string | null
+  approvedAt?: string | null
+  createdAt: string
+}
+
+export const missionsApi = {
+  // Professor: envia missão para um ou mais alunos
+  create: (data: {
+    childIds: string[]
+    title: string
+    description?: string
+    iconEmoji?: string
+    starsReward?: number
+  }): Promise<{ id: string; title: string; childId: string; status: MissionStatus }[]> =>
+    fetchWithAuth("/api/missions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  sent: (): Promise<Mission[]> => fetchWithAuth("/api/missions/sent"),
+
+  // Responsável
+  inbox: (): Promise<Mission[]> => fetchWithAuth("/api/missions/inbox"),
+
+  pendingApproval: (): Promise<Mission[]> => fetchWithAuth("/api/missions/pending-approval"),
+
+  allocate: (id: string, date: string): Promise<Mission> =>
+    fetchWithAuth(`/api/missions/${id}/allocate`, {
+      method: "PATCH",
+      body: JSON.stringify({ date }),
+    }),
+
+  unschedule: (id: string): Promise<Mission> =>
+    fetchWithAuth(`/api/missions/${id}/unschedule`, {
+      method: "PATCH",
+    }),
+
+  approve: (id: string): Promise<Mission & { currentStars: number; message: string }> =>
+    fetchWithAuth(`/api/missions/${id}/approve`, {
+      method: "PATCH",
+    }),
+
+  // Criança / dia
+  forDay: (date?: string, childId?: string): Promise<Mission[]> => {
+    const base = date ? `/api/missions/day?date=${date}` : "/api/missions/day"
+    return fetchWithAuth(withChild(base, childId))
+  },
+
+  complete: (id: string): Promise<Mission & { message: string }> =>
+    fetchWithAuth(`/api/missions/${id}/complete`, {
+      method: "PATCH",
+    }),
+
+  remove: (id: string) =>
+    fetchWithAuth(`/api/missions/${id}`, {
+      method: "DELETE",
+    }),
+}
+
+// ============ TEMPLATES DE ROTINA ============
+export interface TemplateTask {
+  id?: string
+  title: string
+  iconEmoji?: string
+  scheduledTime?: string | null
+  timeOfDay?: string | null
+  sortOrder?: number
+}
+
+export interface RoutineTemplate {
+  id: string
+  name: string
+  emoji: string
+  description: string | null
+  tasks: TemplateTask[]
+}
+
+export const templatesApi = {
+  list: (): Promise<RoutineTemplate[]> => fetchWithAuth("/api/routine-templates"),
+
+  create: (data: {
+    name: string
+    emoji?: string
+    description?: string
+    tasks: TemplateTask[]
+  }): Promise<RoutineTemplate> =>
+    fetchWithAuth("/api/routine-templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<{ name: string; emoji: string; description: string; tasks: TemplateTask[] }>): Promise<RoutineTemplate> =>
+    fetchWithAuth(`/api/routine-templates/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchWithAuth(`/api/routine-templates/${id}`, {
+      method: "DELETE",
+    }),
+
+  // Materializa o template no dia da criança
+  instantiate: (
+    id: string,
+    childId: string,
+    date?: string,
+  ): Promise<{ scheduled: number; tasksCreated: number; message: string }> =>
+    fetchWithAuth(`/api/routine-templates/${id}/instantiate`, {
+      method: "POST",
+      body: JSON.stringify({ childId, date }),
     }),
 }
 

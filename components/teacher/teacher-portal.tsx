@@ -11,9 +11,17 @@ import {
   UserPlus,
   Send,
   ClipboardList,
+  Rocket,
   X,
 } from "lucide-react"
-import { teacherApi, type Student, type BehaviorReport } from "@/lib/api"
+import {
+  teacherApi,
+  missionsApi,
+  type Student,
+  type BehaviorReport,
+  type Mission,
+  type MissionStatus,
+} from "@/lib/api"
 
 const RATING_EMOJIS = ["😣", "😕", "🙂", "😄", "🤩"]
 const RATING_LABELS = ["Dia difícil", "Instável", "Normal", "Bom dia", "Excelente"]
@@ -26,6 +34,7 @@ interface TeacherPortalProps {
 // Portal do professor: vincula alunos por código, concede estrelas de
 // desempenho e escreve relatórios comportamentais diários.
 export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
+  const [view, setView] = useState<"diary" | "missions">("diary")
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [reports, setReports] = useState<BehaviorReport[]>([])
@@ -189,8 +198,40 @@ export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
         </div>
       </section>
 
+      {/* Abas: Diário (estrelas + relatórios) e Missões (dever de casa) */}
+      {students.length > 0 && (
+        <nav className="mx-4 mt-2 grid grid-cols-2 gap-1 rounded-2xl bg-white p-2 shadow-lg">
+          <button
+            onClick={() => setView("diary")}
+            className={`flex items-center justify-center gap-2 rounded-xl py-2 font-bold transition-all ${
+              view === "diary" ? "bg-indigo-500 text-white shadow-md" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+            }`}
+          >
+            <ClipboardList className="h-4 w-4" />
+            <span className="text-sm">Diário</span>
+          </button>
+          <button
+            onClick={() => setView("missions")}
+            className={`flex items-center justify-center gap-2 rounded-xl py-2 font-bold transition-all ${
+              view === "missions"
+                ? "bg-violet-500 text-white shadow-md"
+                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+            }`}
+          >
+            <Rocket className="h-4 w-4" />
+            <span className="text-sm">Missões</span>
+          </button>
+        </nav>
+      )}
+
       <div className="space-y-6 px-4 py-4">
-        {students.length === 0 ? (
+        {students.length > 0 && view === "missions" ? (
+          <TeacherMissions
+            students={students}
+            defaultStudentId={selectedStudentId}
+            onFeedback={showFeedback}
+          />
+        ) : students.length === 0 ? (
           <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
             <GraduationCap className="mx-auto h-10 w-10 text-indigo-300" />
             <p className="mt-2 text-lg font-bold text-slate-700">Nenhum aluno vinculado</p>
@@ -412,5 +453,201 @@ function AddStudentModal({ onClose, onLinked }: AddStudentModalProps) {
         </p>
       </div>
     </div>
+  )
+}
+
+// ============ MISSÕES DO PROFESSOR ============
+const MISSION_STATUS_LABELS: Record<MissionStatus, { label: string; className: string }> = {
+  inbox: { label: "Na caixa de entrada", className: "bg-slate-100 text-slate-600" },
+  scheduled: { label: "Agendada", className: "bg-blue-100 text-blue-700" },
+  completed: { label: "Feita, em revisão", className: "bg-amber-100 text-amber-700" },
+  approved: { label: "Aprovada ⭐", className: "bg-emerald-100 text-emerald-700" },
+}
+
+interface TeacherMissionsProps {
+  students: Student[]
+  defaultStudentId: string | null
+  onFeedback: (message: string) => void
+}
+
+function TeacherMissions({ students, defaultStudentId, onFeedback }: TeacherMissionsProps) {
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [starsReward, setStarsReward] = useState(1)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(defaultStudentId ? [defaultStudentId] : []),
+  )
+  const [isSending, setIsSending] = useState(false)
+  const [formError, setFormError] = useState("")
+  const [sent, setSent] = useState<Mission[]>([])
+
+  useEffect(() => {
+    missionsApi.sent().then(setSent).catch(() => setSent([]))
+  }, [])
+
+  const toggleStudent = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => setSelectedIds(new Set(students.map((s) => s.id)))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError("")
+    if (selectedIds.size === 0) {
+      setFormError("Selecione pelo menos um aluno")
+      return
+    }
+    setIsSending(true)
+    try {
+      await missionsApi.create({
+        childIds: Array.from(selectedIds),
+        title,
+        description: description || undefined,
+        starsReward,
+      })
+      setTitle("")
+      setDescription("")
+      setStarsReward(1)
+      onFeedback(`Missão enviada para ${selectedIds.size} aluno(s)! 🚀`)
+      missionsApi.sent().then(setSent).catch(() => {})
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Erro ao enviar missão")
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  return (
+    <>
+      {/* Formulário de nova missão */}
+      <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-4 shadow-lg">
+        <div className="mb-3 flex items-center gap-2">
+          <Rocket className="h-5 w-5 text-violet-500" />
+          <h2 className="font-black text-slate-700">Nova missão</h2>
+        </div>
+
+        {formError && (
+          <div className="mb-3 rounded-xl bg-red-100 p-3 text-center text-sm font-semibold text-red-600">
+            {formError}
+          </div>
+        )}
+
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+          placeholder="Título (ex: Dever de Matemática)"
+          className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 focus:border-violet-400 focus:outline-none"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          placeholder="Detalhes (ex: Página 42, exercícios 1 a 5)"
+          className="mt-2 w-full rounded-xl border-2 border-slate-200 bg-slate-50 p-3 text-sm font-medium text-slate-700 focus:border-violet-400 focus:outline-none"
+        />
+
+        {/* Alunos destino (turma = todos) */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase text-slate-400">Enviar para</p>
+            <button
+              type="button"
+              onClick={selectAll}
+              className="text-xs font-bold text-violet-500 hover:underline"
+            >
+              Selecionar turma toda
+            </button>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {students.map((student) => (
+              <button
+                key={student.id}
+                type="button"
+                onClick={() => toggleStudent(student.id)}
+                className={`rounded-xl border-2 px-3 py-2 text-sm font-bold transition-all ${
+                  selectedIds.has(student.id)
+                    ? "border-violet-500 bg-violet-50 text-violet-700"
+                    : "border-slate-200 bg-slate-50 text-slate-500 hover:border-violet-300"
+                }`}
+              >
+                {student.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Estrelas na aprovação */}
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-amber-50 p-3">
+          <p className="text-sm font-bold text-amber-700">Estrelas ao aprovar:</p>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                onClick={() => setStarsReward(amount)}
+                className={`h-9 w-9 rounded-lg text-sm font-black transition-all ${
+                  starsReward === amount
+                    ? "bg-amber-400 text-white shadow"
+                    : "bg-white text-amber-600 hover:bg-amber-100"
+                }`}
+              >
+                {amount}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSending}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.01] disabled:opacity-50"
+        >
+          {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+          Enviar missão
+        </button>
+        <p className="mt-2 text-center text-xs text-slate-400">
+          A missão cai na caixa de entrada do responsável, que escolhe o dia da semana.
+        </p>
+      </form>
+
+      {/* Missões enviadas */}
+      <div className="rounded-2xl bg-white p-4 shadow-lg">
+        <h2 className="mb-3 font-black text-slate-700">Missões enviadas</h2>
+        {sent.length === 0 ? (
+          <p className="py-4 text-center text-sm text-slate-400">Nenhuma missão enviada ainda.</p>
+        ) : (
+          <div className="max-h-96 space-y-2 overflow-y-auto">
+            {sent.map((mission) => {
+              const status = MISSION_STATUS_LABELS[mission.status]
+              return (
+                <div key={mission.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                  <span className="text-2xl">{mission.iconEmoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-slate-700">{mission.title}</p>
+                    <p className="text-xs text-slate-400">
+                      {mission.childName}
+                      {mission.scheduledDate
+                        ? ` · ${new Date(`${mission.scheduledDate}T12:00:00`).toLocaleDateString("pt-BR")}`
+                        : ""}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${status.className}`}>
+                    {status.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </>
   )
 }

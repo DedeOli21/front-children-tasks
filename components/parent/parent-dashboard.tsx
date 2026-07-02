@@ -17,8 +17,10 @@ import {
   RotateCcw,
   Minus,
   X,
+  CalendarDays,
 } from "lucide-react"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
+import { RoutinePlanner } from "@/components/parent/routine-planner"
 import { PenaltyList } from "@/components/penalty-list"
 import { RewardsShop } from "@/components/rewards-shop"
 import { HistoryReport } from "@/components/admin/history-report"
@@ -39,7 +41,7 @@ import {
   type MysteryPrize,
 } from "@/lib/api"
 
-type ParentTab = "monitor" | "reports" | "history" | "manage"
+type ParentTab = "monitor" | "planner" | "reports" | "history" | "manage"
 
 interface ParentDashboardProps {
   parentName: string
@@ -450,10 +452,11 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       </section>
 
       {/* Navegação */}
-      <nav className="sticky top-16 z-30 mx-4 mt-2 grid grid-cols-4 gap-1 rounded-2xl bg-white p-2 shadow-lg">
+      <nav className="sticky top-16 z-30 mx-4 mt-2 grid grid-cols-5 gap-1 rounded-2xl bg-white p-2 shadow-lg">
         {(
           [
             { id: "monitor", label: "Acompanhar", icon: Users },
+            { id: "planner", label: "Rotinas", icon: CalendarDays },
             { id: "reports", label: "Escola", icon: GraduationCap },
             { id: "history", label: "Histórico", icon: ClipboardList },
             { id: "manage", label: "Gerenciar", icon: Settings },
@@ -585,6 +588,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
               <RewardsShop stars={selectedChild.currentStars} rewards={rewards} onRedeem={handleRedeemReward} />
             </div>
           </>
+        ) : activeTab === "planner" ? (
+          <RoutinePlanner
+            children={children}
+            selectedChildId={selectedChildId}
+            onStarsChanged={updateChildStars}
+          />
         ) : activeTab === "reports" && selectedChild ? (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-2xl bg-indigo-50 p-4 shadow-lg">

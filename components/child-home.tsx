@@ -10,7 +10,7 @@ import { RoutineSchedule } from "@/components/routine-schedule"
 import { Confetti } from "@/components/confetti"
 import { StreakDisplay } from "@/components/streak-display"
 import { MysteryBox } from "@/components/mystery-box"
-import { Star, Gift, AlertTriangle, Clock, Loader2, LogOut, Package } from "lucide-react"
+import { Star, Gift, AlertTriangle, Clock, Loader2, LogOut, Package, Rocket, Check } from "lucide-react"
 import {
   starsApi,
   tasksApi,
@@ -19,11 +19,13 @@ import {
   routinesApi,
   streaksApi,
   mysteryBoxApi,
+  missionsApi,
   type Task,
   type Penalty,
   type Reward,
   type RoutineItem,
   type MysteryPrize,
+  type Mission,
 } from "@/lib/api"
 
 type ChildTab = "tasks" | "routine" | "penalties" | "rewards" | "mystery"
@@ -44,6 +46,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   const [loadError, setLoadError] = useState(false)
 
   const [tasks, setTasks] = useState<Task[]>([])
+  const [missions, setMissions] = useState<Mission[]>([])
   const [penalties, setPenalties] = useState<Penalty[]>([])
   const [rewards, setRewards] = useState<Reward[]>([])
   const [routines, setRoutines] = useState<RoutineItem[]>([])
@@ -54,10 +57,11 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     setIsLoading(true)
     setLoadError(false)
     try {
-      const [starsData, tasksData, penaltiesData, rewardsData, routinesData, streakData, mysteryBoxConfig] =
+      const [starsData, tasksData, missionsData, penaltiesData, rewardsData, routinesData, streakData, mysteryBoxConfig] =
         await Promise.all([
           starsApi.getBalance(),
           tasksApi.list(),
+          missionsApi.forDay().catch(() => [] as Mission[]),
           penaltiesApi.list(),
           rewardsApi.list(),
           routinesApi.list(),
@@ -67,6 +71,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
 
       setStars(starsData.stars ?? 0)
       setTasks(tasksData)
+      setMissions(missionsData)
       setPenalties(penaltiesData)
       setRewards(rewardsData)
       setRoutines(routinesData)
@@ -94,18 +99,44 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     const task = tasks.find((t) => t.id === taskId)
     if (!task || task.completed) return
 
-    // Atualização otimista com rollback em caso de erro
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: true } : t)))
+    // Atualização otimista com rollback em caso de erro.
+    // As estrelas só chegam quando o responsável aprovar.
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, completed: true, status: "completed" } : t)),
+    )
     celebrate()
 
     try {
       const result = await tasksApi.complete(taskId)
-      setStars(result.currentStars ?? stars + 1)
       if (result.streak !== undefined) setStreak(result.streak)
+      toast.info("Tarefa enviada! Aguardando o chefe aprovar 🕐")
     } catch (error) {
       console.error("Erro ao completar tarefa:", error)
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: false } : t)))
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, completed: false, status: "pending" } : t)),
+      )
       toast.error("Não foi possível completar a tarefa. Tente novamente.")
+    }
+  }
+
+  const handleMissionComplete = async (missionId: string) => {
+    const mission = missions.find((m) => m.id === missionId)
+    if (!mission || mission.status !== "scheduled") return
+
+    setMissions((prev) =>
+      prev.map((m) => (m.id === missionId ? { ...m, status: "completed" } : m)),
+    )
+    celebrate()
+
+    try {
+      await missionsApi.complete(missionId)
+      toast.info("Missão enviada! Aguardando o chefe aprovar 🕐")
+    } catch (error) {
+      console.error("Erro ao concluir missão:", error)
+      setMissions((prev) =>
+        prev.map((m) => (m.id === missionId ? { ...m, status: "scheduled" } : m)),
+      )
+      toast.error("Não foi possível concluir a missão. Tente novamente.")
     }
   }
 
@@ -254,12 +285,90 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
 
       <div className="px-4 py-6">
         {activeTab === "tasks" ? (
-          <TaskList
-            tasks={tasks}
-            completedTasks={completedTasks}
-            onTaskComplete={handleTaskComplete}
-            childName={childName}
-          />
+          <div className="space-y-6">
+            <TaskList
+              tasks={tasks}
+              completedTasks={completedTasks}
+              onTaskComplete={handleTaskComplete}
+              childName={childName}
+            />
+
+            {/* Missões da escola alocadas para hoje */}
+            {missions.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100">
+                    <Rocket className="h-6 w-6 text-violet-500" />
+                  </div>
+                  <h2 className="text-lg font-black text-foreground">Missões da Escola</h2>
+                </div>
+                {missions.map((mission) => {
+                  const isDone = mission.status !== "scheduled"
+                  const isApproved = mission.status === "approved"
+                  return (
+                    <button
+                      key={mission.id}
+                      onClick={() => handleMissionComplete(mission.id)}
+                      disabled={isDone}
+                      className={`w-full rounded-2xl p-4 text-left shadow-lg transition-all duration-300 ${
+                        isApproved
+                          ? "bg-gradient-to-r from-emerald-100 to-green-100 ring-2 ring-primary"
+                          : isDone
+                            ? "bg-amber-50 ring-2 ring-amber-300"
+                            : "bg-card hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 ${
+                            isApproved
+                              ? "border-primary bg-primary"
+                              : isDone
+                                ? "border-amber-300 bg-amber-100"
+                                : "border-violet-200 bg-violet-50"
+                          }`}
+                        >
+                          {isApproved ? (
+                            <Check className="h-8 w-8 text-white" strokeWidth={3} />
+                          ) : (
+                            <span className="text-3xl">{mission.iconEmoji}</span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-lg font-bold ${isApproved ? "text-primary" : "text-foreground"}`}>
+                            {mission.title}
+                          </p>
+                          {mission.description && !isDone && (
+                            <p className="text-sm text-muted-foreground">{mission.description}</p>
+                          )}
+                          <p
+                            className={`text-sm ${
+                              isDone && !isApproved ? "font-semibold text-amber-600" : "text-muted-foreground"
+                            }`}
+                          >
+                            {isApproved
+                              ? `Aprovada! +${mission.starsReward} estrela(s)`
+                              : isDone
+                                ? "Aguardando o chefe aprovar! 🕐"
+                                : `Missão de ${mission.teacherName ?? "professor(a)"} · vale ${mission.starsReward}⭐`}
+                          </p>
+                        </div>
+                        {isDone && (
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-full shadow-md ${
+                              isApproved ? "bg-yellow-400" : "bg-amber-200"
+                            }`}
+                          >
+                            <span className="text-xl">{isApproved ? "⭐" : "🕐"}</span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         ) : activeTab === "routine" ? (
           <RoutineSchedule routines={routines} />
         ) : activeTab === "penalties" ? (

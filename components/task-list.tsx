@@ -98,13 +98,29 @@ export function TaskList({ tasks, completedTasks, onTaskComplete, onResetDay, ch
                   >
                     {task.title}
                   </p>
-                  <p className="text-sm text-muted-foreground">{isCompleted ? "+1 estrela" : "Toque para completar"}</p>
+                  <p
+                    className={`text-sm ${
+                      isCompleted && task.status !== "approved"
+                        ? "font-semibold text-amber-600"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {!isCompleted
+                      ? "Toque para completar"
+                      : task.status === "approved"
+                        ? "Aprovada! +1 estrela"
+                        : "Aguardando o chefe aprovar! 🕐"}
+                  </p>
                 </div>
 
-                {/* Star indicator */}
+                {/* Indicador: estrela quando aprovada, relógio enquanto aguarda */}
                 {isCompleted && (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-400 shadow-md">
-                    <span className="text-xl">⭐</span>
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full shadow-md ${
+                      task.status === "approved" ? "bg-yellow-400" : "bg-amber-200"
+                    }`}
+                  >
+                    <span className="text-xl">{task.status === "approved" ? "⭐" : "🕐"}</span>
                   </div>
                 )}
               </div>

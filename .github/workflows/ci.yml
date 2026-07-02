@@ -21,5 +21,8 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: Testes (Vitest + Testing Library)
+        run: npm test
+
       - name: Build de produção
         run: npm run build

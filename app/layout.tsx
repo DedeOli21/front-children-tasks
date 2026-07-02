@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Nunito } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "sonner"
+import { Providers } from "@/components/providers"
 import "./globals.css"
 
 const nunito = Nunito({
@@ -32,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`font-sans antialiased ${nunito.className}`}>
-        {children}
+        <Providers>{children}</Providers>
         <Toaster richColors position="top-center" />
         <Analytics />
       </body>

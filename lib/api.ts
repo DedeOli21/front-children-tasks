@@ -198,6 +198,14 @@ export interface StarRequest {
   resolvedAt?: string | null
 }
 
+export interface StarApprovalResult extends StarRequest {
+  currentStars: number
+  baseAmount?: number
+  starsEarned?: number
+  eventMultiplier?: number
+  message: string
+}
+
 export const starsApi = {
   getBalance: async (childId?: string): Promise<{ stars: number }> => {
     const data = await fetchWithAuth(withChild("/api/stars", childId))
@@ -219,7 +227,7 @@ export const starsApi = {
   // Sugestões enviadas pela terapeuta
   listMyRequests: (): Promise<StarRequest[]> => fetchWithAuth("/api/stars/requests/mine"),
 
-  approveRequest: (id: string): Promise<StarRequest & { currentStars: number; message: string }> =>
+  approveRequest: (id: string): Promise<StarApprovalResult> =>
     fetchWithAuth(`/api/stars/approve/${id}`, { method: "PATCH" }),
 
   rejectRequest: (id: string): Promise<StarRequest & { message: string }> =>
@@ -519,14 +527,15 @@ export interface Reward {
   id: string
   title: string
   emoji: string
-  description?: string
+  description?: string | null
   cost: number
+  kind?: "privilege" | "streak_freeze"
 }
 
 export const rewardsApi = {
   list: (): Promise<Reward[]> => fetchWithAuth("/api/rewards"),
 
-  create: (data: { title: string; emoji: string; description?: string; cost: number }) =>
+  create: (data: { title: string; emoji: string; description?: string | null; cost: number; kind?: Reward["kind"] }) =>
     fetchWithAuth("/api/rewards", {
       method: "POST",
       body: JSON.stringify(data),
@@ -552,10 +561,89 @@ export const rewardsApi = {
 // ============ HISTÓRICO ============
 export interface HistoryEntry {
   id: string
-  type: "task_complete" | "penalty" | "reward_redeem"
+  type: "task_complete" | "penalty" | "reward_redeem" | "streak_freeze_used" | "stars_add" | "stars_subtract"
   description: string
   starsChange: number
   createdAt: string
+}
+
+// ============ COFRINHO COMPARTILHADO ============
+export type FamilyGoalStatus = "active" | "completed" | "cancelled"
+
+export interface FamilyGoal {
+  id: string
+  familyId: string
+  title: string
+  emoji: string
+  description: string | null
+  targetStars: number
+  depositedStars: number
+  status: FamilyGoalStatus
+  completedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GoalDeposit {
+  id: string
+  amount: number
+  childId: string
+  childName?: string
+  createdAt: string
+}
+
+export const goalsApi = {
+  list: (): Promise<FamilyGoal[]> => fetchWithAuth("/api/goals"),
+
+  create: (data: { title: string; emoji?: string; description?: string; targetStars: number }): Promise<FamilyGoal> =>
+    fetchWithAuth("/api/goals", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deposits: (goalId: string): Promise<GoalDeposit[]> => fetchWithAuth(`/api/goals/${goalId}/deposits`),
+
+  deposit: (
+    goalId: string,
+    data: { amount: number; childId?: string },
+  ): Promise<{ goal: FamilyGoal; currentStars: number; deposited: number; reachedGoal: boolean; message: string }> =>
+    fetchWithAuth(`/api/goals/${goalId}/deposit`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  complete: (goalId: string): Promise<{ goal: FamilyGoal; message: string }> =>
+    fetchWithAuth(`/api/goals/${goalId}/complete`, { method: "PATCH" }),
+
+  cancel: (goalId: string): Promise<{ goal: FamilyGoal; refundedChildren: number; message: string }> =>
+    fetchWithAuth(`/api/goals/${goalId}/cancel`, { method: "PATCH" }),
+}
+
+// ============ EVENTOS SURPRESA ============
+export interface RewardEvent {
+  id: string
+  familyId: string
+  name: string
+  emoji: string
+  multiplier: number
+  startsAt: string
+  endsAt: string
+  active: boolean
+  isLive?: boolean
+  createdAt: string
+}
+
+export const eventsApi = {
+  list: (): Promise<RewardEvent[]> => fetchWithAuth("/api/events"),
+
+  create: (data: { name: string; emoji?: string; multiplier: number; startsAt: string; endsAt: string }): Promise<RewardEvent> =>
+    fetchWithAuth("/api/events", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deactivate: (id: string): Promise<RewardEvent & { message: string }> =>
+    fetchWithAuth(`/api/events/${id}/deactivate`, { method: "PATCH" }),
 }
 
 export const historyApi = {
@@ -668,6 +756,16 @@ export interface StreakData {
   longestStreak: number
   streakFreezes: number
   lastStreakDate: string | null
+  streakBrokenAt?: string | null
+  plant?: {
+    state: "healthy" | "withered" | "protected" | "seed"
+    stage: "seed" | "sprout" | "leafy" | "budding" | "blooming" | "withered"
+    emoji: string
+    label: string
+    streakBrokenAt: string | null
+    protectedByFreezes: boolean
+    nextGrowthAt: number | null
+  }
   nextMultiplierThreshold: number | null
 }
 
@@ -681,6 +779,37 @@ export const streaksApi = {
       method: "PATCH",
       body: JSON.stringify({ childId, amount }),
     }),
+}
+
+// ============ MODO FOCO ============
+export type FocusSessionStatus = "running" | "completed" | "abandoned"
+
+export interface FocusSession {
+  id: string
+  childId: string
+  missionId: string | null
+  durationMinutes: number
+  status: FocusSessionStatus
+  startedAt: string
+  endedAt: string | null
+  missionTitle?: string | null
+  message?: string
+}
+
+export const focusApi = {
+  start: (data: { missionId?: string; durationMinutes: number }): Promise<FocusSession> =>
+    fetchWithAuth("/api/focus/start", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  complete: (id: string): Promise<FocusSession> =>
+    fetchWithAuth(`/api/focus/${id}/complete`, { method: "PATCH" }),
+
+  abandon: (id: string): Promise<FocusSession> =>
+    fetchWithAuth(`/api/focus/${id}/abandon`, { method: "PATCH" }),
+
+  history: (childId?: string): Promise<FocusSession[]> => fetchWithAuth(withChild("/api/focus", childId)),
 }
 
 // ============ TERAPEUTAS ============

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   Loader2,
@@ -19,7 +20,7 @@ import {
   X,
   CalendarDays,
 } from "lucide-react"
-import { AdminDashboard } from "@/components/admin/admin-dashboard"
+import { ControlHub } from "@/components/parent/control-hub"
 import { RoutinePlanner } from "@/components/parent/routine-planner"
 import { PenaltyList } from "@/components/penalty-list"
 import { RewardsShop } from "@/components/rewards-shop"
@@ -43,6 +44,8 @@ import {
   type MysteryPrize,
   type TherapistLink,
 } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
+import { useSelectedChild } from "@/contexts/selected-child-context"
 
 type ParentTab = "monitor" | "planner" | "reports" | "history" | "manage"
 
@@ -52,13 +55,13 @@ interface ParentDashboardProps {
 }
 
 export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) {
+  const queryClient = useQueryClient()
+  const { selectedChildId, setSelectedChildId } = useSelectedChild()
   const [activeTab, setActiveTab] = useState<ParentTab>("monitor")
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
 
   // Crianças
   const [children, setChildren] = useState<Child[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [showAddChild, setShowAddChild] = useState(false)
   const [showAddTherapist, setShowAddTherapist] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
@@ -76,62 +79,125 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
 
   const selectedChild = children.find((c) => c.id === selectedChildId) ?? null
 
+  const childrenQuery = useQuery({
+    queryKey: queryKeys.children,
+    queryFn: childrenApi.list,
+  })
+  const penaltiesQuery = useQuery({
+    queryKey: queryKeys.penalties,
+    queryFn: penaltiesApi.list,
+  })
+  const rewardsQuery = useQuery({
+    queryKey: queryKeys.rewards,
+    queryFn: rewardsApi.list,
+  })
+  const routinesQuery = useQuery({
+    queryKey: queryKeys.routines,
+    queryFn: () => routinesApi.list().catch(() => [] as RoutineItem[]),
+  })
+  const mysteryBoxQuery = useQuery({
+    queryKey: queryKeys.mysteryBox,
+    queryFn: () => mysteryBoxApi.getConfig().catch(() => ({ cost: 5, prizes: [] as MysteryPrize[] })),
+  })
+  const childTasksQuery = useQuery({
+    queryKey: queryKeys.tasks(selectedChildId),
+    queryFn: () => tasksApi.list(selectedChildId ?? undefined),
+    enabled: Boolean(selectedChildId),
+  })
+  const reportsQuery = useQuery({
+    queryKey: queryKeys.childReports(selectedChildId),
+    queryFn: () => childrenApi.reports(selectedChildId as string),
+    enabled: Boolean(selectedChildId),
+  })
+  const therapistsQuery = useQuery({
+    queryKey: queryKeys.therapists,
+    queryFn: () => therapistsApi.listForParent().catch(() => [] as TherapistLink[]),
+  })
+
   const loadChildren = useCallback(async () => {
     const list = await childrenApi.list()
+    queryClient.setQueryData(queryKeys.children, list)
     setChildren(list)
-    setSelectedChildId((current) => current && list.some((c) => c.id === current) ? current : (list[0]?.id ?? null))
+    if (!selectedChildId || !list.some((c) => c.id === selectedChildId)) {
+      setSelectedChildId(list[0]?.id ?? null)
+    }
     return list
-  }, [])
+  }, [queryClient, selectedChildId, setSelectedChildId])
 
-  // Carga inicial: crianças + catálogos
+  // Dados de cache do React Query sincronizados com os componentes atuais.
   useEffect(() => {
-    async function load() {
-      setIsLoading(true)
-      setError("")
-      try {
-        const [, penaltiesData, rewardsData, routinesData, mysteryBoxConfig] = await Promise.all([
-          loadChildren(),
-          penaltiesApi.list(),
-          rewardsApi.list(),
-          routinesApi.list().catch(() => [] as RoutineItem[]),
-          mysteryBoxApi.getConfig().catch(() => ({ cost: 5, prizes: [] as MysteryPrize[] })),
-        ])
-        setPenalties(penaltiesData)
-        setRewards(rewardsData)
-        setRoutines(routinesData)
-        setMysteryPrizes(mysteryBoxConfig.prizes)
-      } catch (err) {
-        console.error("Erro ao carregar painel:", err)
-        setError("Não foi possível carregar os dados. Verifique sua conexão.")
-      } finally {
-        setIsLoading(false)
+    if (childrenQuery.data) {
+      setChildren(childrenQuery.data)
+      if (!selectedChildId || !childrenQuery.data.some((c) => c.id === selectedChildId)) {
+        setSelectedChildId(childrenQuery.data[0]?.id ?? null)
       }
     }
-    load()
-  }, [loadChildren])
+  }, [childrenQuery.data, selectedChildId, setSelectedChildId])
 
-  // Dados por criança selecionada
   useEffect(() => {
-    if (!selectedChildId) return
-    tasksApi.list(selectedChildId).then(setChildTasks).catch(() => {
-      setChildTasks([])
-      toast.error("Não foi possível carregar as tarefas da criança selecionada.")
+    if (penaltiesQuery.data) setPenalties(penaltiesQuery.data)
+  }, [penaltiesQuery.data])
+
+  useEffect(() => {
+    if (rewardsQuery.data) setRewards(rewardsQuery.data)
+  }, [rewardsQuery.data])
+
+  useEffect(() => {
+    if (routinesQuery.data) setRoutines(routinesQuery.data)
+  }, [routinesQuery.data])
+
+  useEffect(() => {
+    if (mysteryBoxQuery.data) setMysteryPrizes(mysteryBoxQuery.data.prizes)
+  }, [mysteryBoxQuery.data])
+
+  useEffect(() => {
+    if (childTasksQuery.data) setChildTasks(childTasksQuery.data)
+  }, [childTasksQuery.data])
+
+  useEffect(() => {
+    if (reportsQuery.data) setReports(reportsQuery.data)
+  }, [reportsQuery.data])
+
+  useEffect(() => {
+    if (therapistsQuery.data) setTherapists(therapistsQuery.data)
+  }, [therapistsQuery.data])
+
+  useEffect(() => {
+    const failed =
+      childrenQuery.isError ||
+      penaltiesQuery.isError ||
+      rewardsQuery.isError ||
+      routinesQuery.isError ||
+      mysteryBoxQuery.isError
+    setError(failed ? "Não foi possível carregar os dados. Verifique sua conexão." : "")
+  }, [
+    childrenQuery.isError,
+    mysteryBoxQuery.isError,
+    penaltiesQuery.isError,
+    rewardsQuery.isError,
+    routinesQuery.isError,
+  ])
+
+  const loadTherapists = useCallback(async () => {
+    const data = await queryClient.fetchQuery({
+      queryKey: queryKeys.therapists,
+      queryFn: () => therapistsApi.listForParent().catch(() => [] as TherapistLink[]),
     })
-    childrenApi.reports(selectedChildId).then(setReports).catch(() => setReports([]))
-  }, [selectedChildId])
+    setTherapists(data)
+  }, [queryClient])
 
-  // Terapeutas vinculadas à família
-  const loadTherapists = useCallback(() => {
-    therapistsApi.listForParent().then(setTherapists).catch(() => setTherapists([]))
-  }, [])
-
-  useEffect(() => {
-    loadTherapists()
-  }, [loadTherapists])
+  const isLoading =
+    childrenQuery.isLoading ||
+    penaltiesQuery.isLoading ||
+    rewardsQuery.isLoading ||
+    routinesQuery.isLoading ||
+    mysteryBoxQuery.isLoading
 
   // ============ AÇÕES SOBRE A CRIANÇA ============
   const updateChildStars = (childId: string, stars: number) => {
-    setChildren((prev) => prev.map((c) => (c.id === childId ? { ...c, currentStars: stars } : c)))
+    const update = (prev: Child[]) => prev.map((c) => (c.id === childId ? { ...c, currentStars: stars } : c))
+    setChildren(update)
+    queryClient.setQueryData<Child[]>(queryKeys.children, (prev) => update(prev ?? []))
   }
 
   const handleToggleTask = async (task: Task) => {
@@ -141,6 +207,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
         ? await tasksApi.uncomplete(task.id, selectedChildId)
         : await tasksApi.complete(task.id, selectedChildId)
       setChildTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed: !task.completed } : t)))
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
     } catch (err) {
       console.error("Erro ao alternar tarefa:", err)
@@ -153,6 +220,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await tasksApi.resetDay(selectedChildId)
       setChildTasks((prev) => prev.map((t) => ({ ...t, completed: false })))
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
     } catch (err) {
       console.error("Erro ao resetar dia:", err)
       toast.error("Erro ao resetar dia. Tente novamente.")
@@ -164,6 +232,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const result = await penaltiesApi.apply(penaltyId, selectedChildId)
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
+      queryClient.invalidateQueries({ queryKey: queryKeys.streak(selectedChildId) })
     } catch (err) {
       console.error("Erro ao aplicar penalidade:", err)
       toast.error("Erro ao aplicar penalidade. Tente novamente.")
@@ -177,6 +246,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const result = await rewardsApi.redeem(rewardId, selectedChildId)
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
+      queryClient.invalidateQueries({ queryKey: queryKeys.streak(selectedChildId) })
     } catch (err) {
       console.error("Erro ao resgatar recompensa:", err)
       toast.error("Erro ao resgatar recompensa. Tente novamente.")
@@ -191,6 +261,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
           ? await starsApi.add(selectedChildId, delta, "Ajuste do responsável")
           : await starsApi.subtract(selectedChildId, -delta, "Ajuste do responsável")
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
+      queryClient.invalidateQueries({ queryKey: queryKeys.stars(selectedChildId) })
     } catch (err) {
       console.error("Erro ao ajustar estrelas:", err)
       toast.error("Erro ao ajustar estrelas. Tente novamente.")
@@ -209,6 +280,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const result = await streaksApi.grantFreezes(selectedChildId, 1)
       toast.success(result.message)
+      queryClient.invalidateQueries({ queryKey: queryKeys.streak(selectedChildId) })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível conceder o congelamento")
     }
@@ -219,6 +291,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       await therapistsApi.unlink(therapistId, childId)
       toast.success("Acesso da terapeuta removido")
       loadTherapists()
+      queryClient.invalidateQueries({ queryKey: queryKeys.therapists })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível remover o acesso")
     }
@@ -229,6 +302,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await tasksApi.create(taskData)
       setChildTasks((prev) => [...prev, created])
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
     } catch (err) {
       console.error("Erro ao criar tarefa:", err)
       toast.error("Erro ao criar tarefa. Tente novamente.")
@@ -239,6 +313,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await tasksApi.update(id, taskData)
       setChildTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...taskData } : t)))
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
     } catch (err) {
       console.error("Erro ao atualizar tarefa:", err)
       toast.error("Erro ao atualizar tarefa. Tente novamente.")
@@ -249,6 +324,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await tasksApi.delete(id)
       setChildTasks((prev) => prev.filter((t) => t.id !== id))
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
     } catch (err) {
       console.error("Erro ao deletar tarefa:", err)
       toast.error("Erro ao deletar tarefa. Tente novamente.")
@@ -259,6 +335,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await penaltiesApi.create(penaltyData)
       setPenalties((prev) => [...prev, created])
+      queryClient.invalidateQueries({ queryKey: queryKeys.penalties })
     } catch (err) {
       console.error("Erro ao criar penalidade:", err)
       toast.error("Erro ao criar penalidade. Tente novamente.")
@@ -269,6 +346,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await penaltiesApi.update(id, penaltyData)
       setPenalties((prev) => prev.map((p) => (p.id === id ? { ...p, ...penaltyData } : p)))
+      queryClient.invalidateQueries({ queryKey: queryKeys.penalties })
     } catch (err) {
       console.error("Erro ao atualizar penalidade:", err)
       toast.error("Erro ao atualizar penalidade. Tente novamente.")
@@ -279,6 +357,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await penaltiesApi.delete(id)
       setPenalties((prev) => prev.filter((p) => p.id !== id))
+      queryClient.invalidateQueries({ queryKey: queryKeys.penalties })
     } catch (err) {
       console.error("Erro ao deletar penalidade:", err)
       toast.error("Erro ao deletar penalidade. Tente novamente.")
@@ -289,6 +368,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await rewardsApi.create(rewardData)
       setRewards((prev) => [...prev, created])
+      queryClient.invalidateQueries({ queryKey: queryKeys.rewards })
     } catch (err) {
       console.error("Erro ao criar recompensa:", err)
       toast.error("Erro ao criar recompensa. Tente novamente.")
@@ -299,6 +379,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await rewardsApi.update(id, rewardData)
       setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, ...rewardData } : r)))
+      queryClient.invalidateQueries({ queryKey: queryKeys.rewards })
     } catch (err) {
       console.error("Erro ao atualizar recompensa:", err)
       toast.error("Erro ao atualizar recompensa. Tente novamente.")
@@ -309,6 +390,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await rewardsApi.delete(id)
       setRewards((prev) => prev.filter((r) => r.id !== id))
+      queryClient.invalidateQueries({ queryKey: queryKeys.rewards })
     } catch (err) {
       console.error("Erro ao deletar recompensa:", err)
       toast.error("Erro ao deletar recompensa. Tente novamente.")
@@ -319,6 +401,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await routinesApi.create(routineData)
       setRoutines((prev) => [...prev, created].sort((a, b) => a.time.localeCompare(b.time)))
+      queryClient.invalidateQueries({ queryKey: queryKeys.routines })
     } catch (err) {
       console.error("Erro ao criar rotina:", err)
       toast.error("Erro ao criar rotina. Tente novamente.")
@@ -331,6 +414,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setRoutines((prev) =>
         prev.map((r) => (r.id === id ? { ...r, ...routineData } : r)).sort((a, b) => a.time.localeCompare(b.time)),
       )
+      queryClient.invalidateQueries({ queryKey: queryKeys.routines })
     } catch (err) {
       console.error("Erro ao atualizar rotina:", err)
       toast.error("Erro ao atualizar rotina. Tente novamente.")
@@ -341,6 +425,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await routinesApi.delete(id)
       setRoutines((prev) => prev.filter((r) => r.id !== id))
+      queryClient.invalidateQueries({ queryKey: queryKeys.routines })
     } catch (err) {
       console.error("Erro ao deletar rotina:", err)
       toast.error("Erro ao deletar rotina. Tente novamente.")
@@ -351,6 +436,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await mysteryBoxApi.createPrize(prizeData)
       setMysteryPrizes((prev) => [...prev, created])
+      queryClient.invalidateQueries({ queryKey: queryKeys.mysteryBox })
     } catch (err) {
       console.error("Erro ao criar prêmio:", err)
       toast.error("Erro ao criar prêmio. Tente novamente.")
@@ -361,6 +447,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await mysteryBoxApi.updatePrize(id, prizeData)
       setMysteryPrizes((prev) => prev.map((p) => (p.id === id ? { ...p, ...prizeData } : p)))
+      queryClient.invalidateQueries({ queryKey: queryKeys.mysteryBox })
     } catch (err) {
       console.error("Erro ao atualizar prêmio:", err)
       toast.error("Erro ao atualizar prêmio. Tente novamente.")
@@ -371,6 +458,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await mysteryBoxApi.deletePrize(id)
       setMysteryPrizes((prev) => prev.filter((p) => p.id !== id))
+      queryClient.invalidateQueries({ queryKey: queryKeys.mysteryBox })
     } catch (err) {
       console.error("Erro ao deletar prêmio:", err)
       toast.error("Erro ao deletar prêmio. Tente novamente.")
@@ -405,30 +493,45 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
 
   if (activeTab === "manage") {
     return (
-      <AdminDashboard
-        tasks={childTasks}
-        penalties={penalties}
-        rewards={rewards}
-        routines={routines}
-        mysteryPrizes={mysteryPrizes}
-        onTaskCreate={handleTaskCreate}
-        onTaskUpdate={handleTaskUpdate}
-        onTaskDelete={handleTaskDelete}
-        onPenaltyCreate={handlePenaltyCreate}
-        onPenaltyUpdate={handlePenaltyUpdate}
-        onPenaltyDelete={handlePenaltyDelete}
-        onRewardCreate={handleRewardCreate}
-        onRewardUpdate={handleRewardUpdate}
-        onRewardDelete={handleRewardDelete}
-        onRoutineCreate={handleRoutineCreate}
-        onRoutineUpdate={handleRoutineUpdate}
-        onRoutineDelete={handleRoutineDelete}
-        onMysteryPrizeCreate={handleMysteryPrizeCreate}
-        onMysteryPrizeUpdate={handleMysteryPrizeUpdate}
-        onMysteryPrizeDelete={handleMysteryPrizeDelete}
-        onBack={() => setActiveTab("monitor")}
-        historyChildId={selectedChildId ?? undefined}
-      />
+      <>
+        <ControlHub
+          childrenList={children}
+          selectedChild={selectedChild}
+          selectedChildId={selectedChildId}
+          tasks={childTasks}
+          penalties={penalties}
+          rewards={rewards}
+          routines={routines}
+          mysteryPrizes={mysteryPrizes}
+          therapists={therapists}
+          onTaskCreate={handleTaskCreate}
+          onTaskUpdate={handleTaskUpdate}
+          onTaskDelete={handleTaskDelete}
+          onPenaltyCreate={handlePenaltyCreate}
+          onPenaltyUpdate={handlePenaltyUpdate}
+          onPenaltyDelete={handlePenaltyDelete}
+          onRewardCreate={handleRewardCreate}
+          onRewardUpdate={handleRewardUpdate}
+          onRewardDelete={handleRewardDelete}
+          onMysteryPrizeCreate={handleMysteryPrizeCreate}
+          onMysteryPrizeUpdate={handleMysteryPrizeUpdate}
+          onMysteryPrizeDelete={handleMysteryPrizeDelete}
+          onBack={() => setActiveTab("monitor")}
+          onStarsChanged={updateChildStars}
+          onAddTherapist={() => setShowAddTherapist(true)}
+          onUnlinkTherapist={handleUnlinkTherapist}
+        />
+        {showAddTherapist && selectedChild && (
+          <AddTherapistModal
+            child={selectedChild}
+            onClose={() => setShowAddTherapist(false)}
+            onLinked={() => {
+              setShowAddTherapist(false)
+              loadTherapists()
+            }}
+          />
+        )}
+      </>
     )
   }
 

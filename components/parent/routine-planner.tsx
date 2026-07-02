@@ -32,6 +32,7 @@ type Selection = { type: "mission"; id: string } | { type: "template"; id: strin
 interface RoutinePlannerProps {
   children: Child[]
   selectedChildId: string | null
+  initialView?: "plan" | "review"
   // Notifica o dashboard quando uma aprovação altera o saldo de estrelas
   onStarsChanged: (childId: string, stars: number) => void
 }
@@ -51,8 +52,8 @@ function buildWeek(): { date: string; weekday: string; dayLabel: string; isToday
   })
 }
 
-export function RoutinePlanner({ children, selectedChildId, onStarsChanged }: RoutinePlannerProps) {
-  const [view, setView] = useState<"plan" | "review">("plan")
+export function RoutinePlanner({ children, selectedChildId, initialView = "plan", onStarsChanged }: RoutinePlannerProps) {
+  const [view, setView] = useState<"plan" | "review">(initialView)
   const [isLoading, setIsLoading] = useState(true)
 
   const [inbox, setInbox] = useState<Mission[]>([])

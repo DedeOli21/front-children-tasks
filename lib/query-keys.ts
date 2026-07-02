@@ -1,0 +1,16 @@
+export const queryKeys = {
+  children: ["children"] as const,
+  tasks: (childId?: string | null) => ["tasks", childId ?? "self"] as const,
+  childReports: (childId?: string | null) => ["children", childId ?? "none", "reports"] as const,
+  penalties: ["penalties"] as const,
+  rewards: ["rewards"] as const,
+  routines: ["routines"] as const,
+  therapists: ["therapists"] as const,
+  mysteryBox: ["mystery-box"] as const,
+  goals: ["goals"] as const,
+  events: ["events"] as const,
+  streak: (childId?: string | null) => ["streak", childId ?? "self"] as const,
+  stars: (childId?: string | null) => ["stars", childId ?? "self"] as const,
+  focusHistory: (childId?: string | null) => ["focus", childId ?? "self"] as const,
+  approvals: ["approvals"] as const,
+}

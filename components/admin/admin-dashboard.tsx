@@ -194,7 +194,7 @@ export function AdminDashboard({
 }
 
 // ============ TASKS ADMIN ============
-function TasksAdmin({
+export function TasksAdmin({
   tasks,
   onCreate,
   onUpdate,
@@ -326,7 +326,7 @@ function TasksAdmin({
 }
 
 // ============ PENALTIES ADMIN ============
-function PenaltiesAdmin({
+export function PenaltiesAdmin({
   penalties,
   onCreate,
   onUpdate,
@@ -474,7 +474,7 @@ function PenaltiesAdmin({
 }
 
 // ============ REWARDS ADMIN ============
-function RewardsAdmin({
+export function RewardsAdmin({
   rewards,
   onCreate,
   onUpdate,
@@ -487,7 +487,13 @@ function RewardsAdmin({
 }) {
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({ title: "", emoji: "", description: "", cost: 10 })
+  const [formData, setFormData] = useState({
+    title: "",
+    emoji: "",
+    description: "",
+    cost: 10,
+    kind: "privilege" as Reward["kind"],
+  })
 
   const handleSubmit = () => {
     if (!formData.title.trim() || !formData.emoji.trim()) return
@@ -499,7 +505,7 @@ function RewardsAdmin({
       onCreate(formData)
       setIsAdding(false)
     }
-    setFormData({ title: "", emoji: "", description: "", cost: 10 })
+    setFormData({ title: "", emoji: "", description: "", cost: 10, kind: "privilege" })
   }
 
   const startEdit = (reward: Reward) => {
@@ -509,6 +515,7 @@ function RewardsAdmin({
       emoji: reward.emoji,
       description: reward.description || "",
       cost: reward.cost,
+      kind: reward.kind ?? "privilege",
     })
     setIsAdding(false)
   }
@@ -516,7 +523,7 @@ function RewardsAdmin({
   const cancelEdit = () => {
     setEditingId(null)
     setIsAdding(false)
-    setFormData({ title: "", emoji: "", description: "", cost: 10 })
+    setFormData({ title: "", emoji: "", description: "", cost: 10, kind: "privilege" })
   }
 
   return (
@@ -580,6 +587,17 @@ function RewardsAdmin({
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-amber-400 focus:outline-none"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">Tipo</label>
+              <select
+                value={formData.kind}
+                onChange={(e) => setFormData({ ...formData, kind: e.target.value as Reward["kind"] })}
+                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 font-semibold focus:border-amber-400 focus:outline-none"
+              >
+                <option value="privilege">Privilégio</option>
+                <option value="streak_freeze">Regador Mágico</option>
+              </select>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={handleSubmit}
@@ -612,6 +630,11 @@ function RewardsAdmin({
                 <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-600">
                   {reward.cost} estrelas
                 </span>
+                {reward.kind === "streak_freeze" && (
+                  <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-600">
+                    Protege streak
+                  </span>
+                )}
                 {reward.description && <p className="text-xs text-slate-500">{reward.description}</p>}
               </div>
             </div>
@@ -637,7 +660,7 @@ function RewardsAdmin({
 }
 
 // ============ ROUTINES ADMIN ============
-function RoutinesAdmin({
+export function RoutinesAdmin({
   routines,
   onCreate,
   onUpdate,

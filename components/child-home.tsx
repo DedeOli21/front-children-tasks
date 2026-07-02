@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 import { StarPanel } from "@/components/star-panel"
 import { TaskList } from "@/components/task-list"
 import { RewardsShop } from "@/components/rewards-shop"
@@ -104,6 +105,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     } catch (error) {
       console.error("Erro ao completar tarefa:", error)
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: false } : t)))
+      toast.error("Não foi possível completar a tarefa. Tente novamente.")
     }
   }
 
@@ -120,14 +122,20 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     } catch (error) {
       console.error("Erro ao resgatar recompensa:", error)
       setStars((prev) => prev + reward.cost)
+      toast.error(error instanceof Error ? error.message : "Não foi possível resgatar a recompensa.")
     }
   }
 
   const handleMysteryBoxOpen = async (): Promise<MysteryPrize> => {
-    const result = await mysteryBoxApi.open()
-    setStars(result.newBalance)
-    celebrate(3000)
-    return result.prize
+    try {
+      const result = await mysteryBoxApi.open()
+      setStars(result.newBalance)
+      celebrate(3000)
+      return result.prize
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível abrir a caixa surpresa.")
+      throw error
+    }
   }
 
   if (isLoading) {

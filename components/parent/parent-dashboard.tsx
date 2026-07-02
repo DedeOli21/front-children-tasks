@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 import {
   Loader2,
   LogOut,
@@ -61,7 +62,6 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   const [reports, setReports] = useState<BehaviorReport[]>([])
 
   // Catálogos da família
-  const [tasks, setTasks] = useState<Task[]>([])
   const [penalties, setPenalties] = useState<Penalty[]>([])
   const [rewards, setRewards] = useState<Reward[]>([])
   const [routines, setRoutines] = useState<RoutineItem[]>([])
@@ -74,17 +74,6 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     setChildren(list)
     setSelectedChildId((current) => current && list.some((c) => c.id === current) ? current : (list[0]?.id ?? null))
     return list
-  }, [])
-
-  const refreshSelectedChild = useCallback(async (childId: string) => {
-    const [childList, childTasksData, reportsData] = await Promise.all([
-      childrenApi.list(),
-      tasksApi.list(childId),
-      childrenApi.reports(childId).catch(() => [] as BehaviorReport[]),
-    ])
-    setChildren(childList)
-    setChildTasks(childTasksData)
-    setReports(reportsData)
   }, [])
 
   // Carga inicial: crianças + catálogos
@@ -117,16 +106,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   // Dados por criança selecionada
   useEffect(() => {
     if (!selectedChildId) return
-    tasksApi.list(selectedChildId).then(setChildTasks).catch(() => setChildTasks([]))
+    tasksApi.list(selectedChildId).then(setChildTasks).catch(() => {
+      setChildTasks([])
+      toast.error("Não foi possível carregar as tarefas da criança selecionada.")
+    })
     childrenApi.reports(selectedChildId).then(setReports).catch(() => setReports([]))
   }, [selectedChildId])
-
-  // Catálogo de tarefas (usa visão da criança selecionada; sem criança, catálogo puro)
-  useEffect(() => {
-    if (selectedChildId) {
-      setTasks(childTasks)
-    }
-  }, [childTasks, selectedChildId])
 
   // ============ AÇÕES SOBRE A CRIANÇA ============
   const updateChildStars = (childId: string, stars: number) => {
@@ -143,6 +128,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
     } catch (err) {
       console.error("Erro ao alternar tarefa:", err)
+      toast.error("Erro ao alternar tarefa. Tente novamente.")
     }
   }
 
@@ -153,6 +139,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setChildTasks((prev) => prev.map((t) => ({ ...t, completed: false })))
     } catch (err) {
       console.error("Erro ao resetar dia:", err)
+      toast.error("Erro ao resetar dia. Tente novamente.")
     }
   }
 
@@ -163,6 +150,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
     } catch (err) {
       console.error("Erro ao aplicar penalidade:", err)
+      toast.error("Erro ao aplicar penalidade. Tente novamente.")
     }
   }
 
@@ -175,6 +163,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
     } catch (err) {
       console.error("Erro ao resgatar recompensa:", err)
+      toast.error("Erro ao resgatar recompensa. Tente novamente.")
     }
   }
 
@@ -188,6 +177,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
     } catch (err) {
       console.error("Erro ao ajustar estrelas:", err)
+      toast.error("Erro ao ajustar estrelas. Tente novamente.")
     }
   }
 
@@ -202,31 +192,30 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   const handleTaskCreate = async (taskData: Omit<Task, "id" | "completed">) => {
     try {
       const created = await tasksApi.create(taskData)
-      setTasks((prev) => [...prev, created])
       setChildTasks((prev) => [...prev, created])
     } catch (err) {
       console.error("Erro ao criar tarefa:", err)
+      toast.error("Erro ao criar tarefa. Tente novamente.")
     }
   }
 
   const handleTaskUpdate = async (id: string, taskData: Partial<Task>) => {
     try {
       await tasksApi.update(id, taskData)
-      const apply = (prev: Task[]) => prev.map((t) => (t.id === id ? { ...t, ...taskData } : t))
-      setTasks(apply)
-      setChildTasks(apply)
+      setChildTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...taskData } : t)))
     } catch (err) {
       console.error("Erro ao atualizar tarefa:", err)
+      toast.error("Erro ao atualizar tarefa. Tente novamente.")
     }
   }
 
   const handleTaskDelete = async (id: string) => {
     try {
       await tasksApi.delete(id)
-      setTasks((prev) => prev.filter((t) => t.id !== id))
       setChildTasks((prev) => prev.filter((t) => t.id !== id))
     } catch (err) {
       console.error("Erro ao deletar tarefa:", err)
+      toast.error("Erro ao deletar tarefa. Tente novamente.")
     }
   }
 
@@ -236,6 +225,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setPenalties((prev) => [...prev, created])
     } catch (err) {
       console.error("Erro ao criar penalidade:", err)
+      toast.error("Erro ao criar penalidade. Tente novamente.")
     }
   }
 
@@ -245,6 +235,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setPenalties((prev) => prev.map((p) => (p.id === id ? { ...p, ...penaltyData } : p)))
     } catch (err) {
       console.error("Erro ao atualizar penalidade:", err)
+      toast.error("Erro ao atualizar penalidade. Tente novamente.")
     }
   }
 
@@ -254,6 +245,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setPenalties((prev) => prev.filter((p) => p.id !== id))
     } catch (err) {
       console.error("Erro ao deletar penalidade:", err)
+      toast.error("Erro ao deletar penalidade. Tente novamente.")
     }
   }
 
@@ -263,6 +255,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setRewards((prev) => [...prev, created])
     } catch (err) {
       console.error("Erro ao criar recompensa:", err)
+      toast.error("Erro ao criar recompensa. Tente novamente.")
     }
   }
 
@@ -272,6 +265,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, ...rewardData } : r)))
     } catch (err) {
       console.error("Erro ao atualizar recompensa:", err)
+      toast.error("Erro ao atualizar recompensa. Tente novamente.")
     }
   }
 
@@ -281,6 +275,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setRewards((prev) => prev.filter((r) => r.id !== id))
     } catch (err) {
       console.error("Erro ao deletar recompensa:", err)
+      toast.error("Erro ao deletar recompensa. Tente novamente.")
     }
   }
 
@@ -290,6 +285,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setRoutines((prev) => [...prev, created].sort((a, b) => a.time.localeCompare(b.time)))
     } catch (err) {
       console.error("Erro ao criar rotina:", err)
+      toast.error("Erro ao criar rotina. Tente novamente.")
     }
   }
 
@@ -301,6 +297,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       )
     } catch (err) {
       console.error("Erro ao atualizar rotina:", err)
+      toast.error("Erro ao atualizar rotina. Tente novamente.")
     }
   }
 
@@ -310,6 +307,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setRoutines((prev) => prev.filter((r) => r.id !== id))
     } catch (err) {
       console.error("Erro ao deletar rotina:", err)
+      toast.error("Erro ao deletar rotina. Tente novamente.")
     }
   }
 
@@ -319,6 +317,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setMysteryPrizes((prev) => [...prev, created])
     } catch (err) {
       console.error("Erro ao criar prêmio:", err)
+      toast.error("Erro ao criar prêmio. Tente novamente.")
     }
   }
 
@@ -328,6 +327,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setMysteryPrizes((prev) => prev.map((p) => (p.id === id ? { ...p, ...prizeData } : p)))
     } catch (err) {
       console.error("Erro ao atualizar prêmio:", err)
+      toast.error("Erro ao atualizar prêmio. Tente novamente.")
     }
   }
 
@@ -337,6 +337,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       setMysteryPrizes((prev) => prev.filter((p) => p.id !== id))
     } catch (err) {
       console.error("Erro ao deletar prêmio:", err)
+      toast.error("Erro ao deletar prêmio. Tente novamente.")
     }
   }
 
@@ -369,7 +370,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   if (activeTab === "manage") {
     return (
       <AdminDashboard
-        tasks={tasks}
+        tasks={childTasks}
         penalties={penalties}
         rewards={rewards}
         routines={routines}

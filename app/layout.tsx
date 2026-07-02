@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Nunito } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 const nunito = Nunito({
@@ -10,8 +11,8 @@ const nunito = Nunito({
 })
 
 export const metadata: Metadata = {
-  title: "Quadro de Recompensas do Gabriel ⭐",
-  description: "Um app divertido para acompanhar as conquistas do Gabriel!",
+  title: "Quadro de Recompensas ⭐",
+  description: "Um app divertido para acompanhar tarefas e conquistas das crianças!",
   generator: "v0.app",
 }
 
@@ -32,6 +33,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`font-sans antialiased ${nunito.className}`}>
         {children}
+        <Toaster richColors position="top-center" />
         <Analytics />
       </body>
     </html>

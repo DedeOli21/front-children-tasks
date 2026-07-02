@@ -20,6 +20,7 @@ export function HistoryReport({ childId }: HistoryReportProps) {
   const [period, setPeriod] = useState<PeriodType>("day")
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     loadHistory()
@@ -28,6 +29,7 @@ export function HistoryReport({ childId }: HistoryReportProps) {
 
   const loadHistory = async () => {
     setIsLoading(true)
+    setLoadError(false)
     try {
       const now = new Date()
       let startDate: Date = startOfDay(now)
@@ -56,6 +58,7 @@ export function HistoryReport({ childId }: HistoryReportProps) {
       setHistory(data)
     } catch (error) {
       console.error("Erro ao carregar histórico:", error)
+      setLoadError(true)
     } finally {
       setIsLoading(false)
     }
@@ -194,6 +197,15 @@ export function HistoryReport({ childId }: HistoryReportProps) {
     // Salvar PDF
     const fileName = `historico-${period}-${format(new Date(), "yyyy-MM-dd")}.pdf`
     doc.save(fileName)
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
+        <p className="font-bold text-slate-600">Não foi possível carregar o histórico</p>
+        <p className="mt-1 text-sm text-slate-400">Selecione uma criança e tente novamente.</p>
+      </div>
+    )
   }
 
   if (isLoading) {

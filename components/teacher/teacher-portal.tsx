@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 import {
   Loader2,
   LogOut,
@@ -50,6 +51,7 @@ export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
       )
     } catch (err) {
       console.error("Erro ao carregar alunos:", err)
+      toast.error("Não foi possível carregar seus alunos. Tente novamente.")
     } finally {
       setIsLoading(false)
     }
@@ -114,6 +116,7 @@ export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
       showFeedback(`+${amount} estrela(s) para ${selectedStudent?.name}! ⭐`)
     } catch (err) {
       console.error("Erro ao dar estrelas:", err)
+      toast.error(err instanceof Error ? err.message : "Não foi possível dar estrelas.")
     }
   }
 

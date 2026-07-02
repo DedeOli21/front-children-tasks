@@ -1,6 +1,6 @@
 "use client"
 
-import { Star } from "lucide-react"
+import { Star, Gift } from "lucide-react"
 import { useEffect, useState } from "react"
 
 interface StarPanelProps {
@@ -78,5 +78,3 @@ export function StarPanel({ stars }: StarPanelProps) {
     </div>
   )
 }
-
-import { Gift } from "lucide-react"

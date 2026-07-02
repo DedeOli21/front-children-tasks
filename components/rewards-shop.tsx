@@ -13,10 +13,14 @@ interface RewardsShopProps {
 export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
   const [selectedReward, setSelectedReward] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
-  const canRedeem = stars >= 10
+
+  // Recompensa mais barata define a mensagem de "quanto falta" no cabeçalho
+  const cheapestCost = rewards.length > 0 ? Math.min(...rewards.map((r) => r.cost)) : 0
+  const canRedeemAny = rewards.some((r) => stars >= r.cost)
 
   const handleRewardSelect = (rewardId: string) => {
-    if (canRedeem) {
+    const reward = rewards.find((r) => r.id === rewardId)
+    if (reward && stars >= reward.cost) {
       setSelectedReward(rewardId)
       setShowConfirmation(true)
     }
@@ -40,7 +44,9 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
           </div>
           <div>
             <p className="text-sm font-medium text-white/80">Loja de Recompensas</p>
-            <p className="text-xl font-bold text-white">{canRedeem ? "Você pode resgatar!" : "Junte 10 estrelas"}</p>
+            <p className="text-xl font-bold text-white">
+              {canRedeemAny ? "Você pode resgatar!" : `Junte ${cheapestCost} estrelas`}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2">
@@ -50,69 +56,72 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
       </div>
 
       {/* Status Banner */}
-      {!canRedeem && (
+      {!canRedeemAny && rewards.length > 0 && (
         <div className="flex items-center gap-3 rounded-2xl bg-secondary p-4 shadow-md">
           <Lock className="h-6 w-6 text-muted-foreground" />
           <p className="font-semibold text-secondary-foreground">
             Faltam{" "}
             <span className="text-primary">
-              {10 - stars} estrela{10 - stars !== 1 ? "s" : ""}
+              {cheapestCost - stars} estrela{cheapestCost - stars !== 1 ? "s" : ""}
             </span>{" "}
-            para desbloquear as recompensas!
+            para desbloquear a primeira recompensa!
           </p>
         </div>
       )}
 
       {/* Rewards Grid - Use rewards from props */}
       <div className="grid grid-cols-2 gap-3">
-        {rewards.map((reward) => (
-          <button
-            key={reward.id}
-            onClick={() => handleRewardSelect(reward.id)}
-            disabled={!canRedeem}
-            className={`group relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 ${
-              canRedeem
-                ? "bg-card shadow-lg hover:scale-[1.03] hover:shadow-xl active:scale-[0.97]"
-                : "bg-muted/50 opacity-60"
-            }`}
-          >
-            {/* Lock/Unlock indicator */}
-            <div
-              className={`absolute right-2 top-2 rounded-full p-1.5 ${
-                canRedeem ? "bg-primary/10" : "bg-muted-foreground/10"
+        {rewards.map((reward) => {
+          const canRedeem = stars >= reward.cost
+          return (
+            <button
+              key={reward.id}
+              onClick={() => handleRewardSelect(reward.id)}
+              disabled={!canRedeem}
+              className={`group relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 ${
+                canRedeem
+                  ? "bg-card shadow-lg hover:scale-[1.03] hover:shadow-xl active:scale-[0.97]"
+                  : "bg-muted/50 opacity-60"
               }`}
             >
-              {canRedeem ? (
-                <Unlock className="h-4 w-4 text-primary" />
-              ) : (
-                <Lock className="h-4 w-4 text-muted-foreground" />
-              )}
-            </div>
+              {/* Lock/Unlock indicator */}
+              <div
+                className={`absolute right-2 top-2 rounded-full p-1.5 ${
+                  canRedeem ? "bg-primary/10" : "bg-muted-foreground/10"
+                }`}
+              >
+                {canRedeem ? (
+                  <Unlock className="h-4 w-4 text-primary" />
+                ) : (
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
 
-            {/* Emoji */}
-            <div
-              className={`mb-3 flex h-16 w-16 items-center justify-center rounded-xl transition-all ${
-                canRedeem ? "bg-gradient-to-br from-accent/20 to-orange-200 group-hover:scale-110" : "bg-muted"
-              }`}
-            >
-              <span className="text-4xl">{reward.emoji}</span>
-            </div>
+              {/* Emoji */}
+              <div
+                className={`mb-3 flex h-16 w-16 items-center justify-center rounded-xl transition-all ${
+                  canRedeem ? "bg-gradient-to-br from-accent/20 to-orange-200 group-hover:scale-110" : "bg-muted"
+                }`}
+              >
+                <span className="text-4xl">{reward.emoji}</span>
+              </div>
 
-            {/* Label - Use reward.title instead of reward.label */}
-            <p className={`font-bold ${canRedeem ? "text-foreground" : "text-muted-foreground"}`}>{reward.title}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{reward.description}</p>
+              {/* Label - Use reward.title instead of reward.label */}
+              <p className={`font-bold ${canRedeem ? "text-foreground" : "text-muted-foreground"}`}>{reward.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{reward.description}</p>
 
-            {/* Cost indicator - Use reward.cost */}
-            <div
-              className={`mt-3 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${
-                canRedeem ? "bg-yellow-100 text-yellow-700" : "bg-muted text-muted-foreground"
-              }`}
-            >
-              <Star className="h-3 w-3 fill-current" />
-              {reward.cost} estrelas
-            </div>
-          </button>
-        ))}
+              {/* Cost indicator - Use reward.cost */}
+              <div
+                className={`mt-3 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${
+                  canRedeem ? "bg-yellow-100 text-yellow-700" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                <Star className="h-3 w-3 fill-current" />
+                {reward.cost} estrelas
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       {/* Confirmation Modal */}

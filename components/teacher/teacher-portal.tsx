@@ -12,6 +12,7 @@ import {
   Send,
   ClipboardList,
   Rocket,
+  MessageCircle,
   X,
 } from "lucide-react"
 import {
@@ -22,6 +23,7 @@ import {
   type Mission,
   type MissionStatus,
 } from "@/lib/api"
+import { MessagesPanel } from "@/components/shared/messages-panel"
 
 const RATING_EMOJIS = ["😣", "😕", "🙂", "😄", "🤩"]
 const RATING_LABELS = ["Dia difícil", "Instável", "Normal", "Bom dia", "Excelente"]
@@ -34,7 +36,7 @@ interface TeacherPortalProps {
 // Portal do professor: vincula alunos por código, concede estrelas de
 // desempenho e escreve relatórios comportamentais diários.
 export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
-  const [view, setView] = useState<"diary" | "missions">("diary")
+  const [view, setView] = useState<"diary" | "missions" | "messages">("diary")
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [reports, setReports] = useState<BehaviorReport[]>([])
@@ -198,9 +200,9 @@ export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
         </div>
       </section>
 
-      {/* Abas: Diário (estrelas + relatórios) e Missões (dever de casa) */}
+      {/* Abas: Diário (estrelas + relatórios), Missões (dever de casa) e Mensagens */}
       {students.length > 0 && (
-        <nav className="mx-4 mt-2 grid grid-cols-2 gap-1 rounded-2xl bg-white p-2 shadow-lg">
+        <nav className="mx-4 mt-2 grid grid-cols-3 gap-1 rounded-2xl bg-white p-2 shadow-lg">
           <button
             onClick={() => setView("diary")}
             className={`flex items-center justify-center gap-2 rounded-xl py-2 font-bold transition-all ${
@@ -221,6 +223,17 @@ export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
             <Rocket className="h-4 w-4" />
             <span className="text-sm">Missões</span>
           </button>
+          <button
+            onClick={() => setView("messages")}
+            className={`flex items-center justify-center gap-2 rounded-xl py-2 font-bold transition-all ${
+              view === "messages"
+                ? "bg-indigo-500 text-white shadow-md"
+                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+            }`}
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-sm">Mensagens</span>
+          </button>
         </nav>
       )}
 
@@ -231,6 +244,8 @@ export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
             defaultStudentId={selectedStudentId}
             onFeedback={showFeedback}
           />
+        ) : students.length > 0 && view === "messages" ? (
+          selectedStudent && <MessagesPanel childId={selectedStudent.id} childName={selectedStudent.name} accent="indigo" />
         ) : students.length === 0 ? (
           <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
             <GraduationCap className="mx-auto h-10 w-10 text-indigo-300" />

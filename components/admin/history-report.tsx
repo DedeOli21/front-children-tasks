@@ -8,6 +8,7 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, end
 import { ptBR } from "date-fns/locale"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { sanitizeForPdf } from "@/lib/pdf-text"
 
 type PeriodType = "day" | "week" | "month"
 
@@ -179,7 +180,7 @@ export function HistoryReport({ childId }: HistoryReportProps) {
         return [
           format(new Date(entry.createdAt), "dd/MM/yyyy HH:mm"),
           typeLabel,
-          entry.description,
+          sanitizeForPdf(entry.description),
           entry.starsChange > 0 ? `+${entry.starsChange}` : `${entry.starsChange}`,
         ]
       })
@@ -188,8 +189,16 @@ export function HistoryReport({ childId }: HistoryReportProps) {
         startY: yPos,
         head: [["Data/Hora", "Tipo", "Descrição", "Estrelas"]],
         body: tableData,
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, cellPadding: 2, overflow: "linebreak", valign: "top" },
         headStyles: { fillColor: [59, 130, 246] },
+        // Larguras somam ~182mm (largura útil de uma A4 com margem de 14mm
+        // de cada lado); Descrição fica com o espaço que sobra.
+        columnStyles: {
+          0: { cellWidth: 32 },
+          1: { cellWidth: 26 },
+          2: { cellWidth: "auto" },
+          3: { cellWidth: 20, halign: "right" },
+        },
         margin: { left: 14, right: 14 },
       })
     }

@@ -6,6 +6,7 @@ import { FileDown, FileText, Loader2 } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { reportsApi } from "@/lib/api"
+import { sanitizeForPdf } from "@/lib/pdf-text"
 
 interface ReportExportProps {
   childId: string
@@ -38,7 +39,7 @@ export function ReportExport({ childId, childName, days = 30 }: ReportExportProp
       const pageWidth = doc.internal.pageSize.getWidth()
 
       doc.setFontSize(18)
-      doc.text(`Relatório de ${report.child.name}`, pageWidth / 2, 18, { align: "center" })
+      doc.text(`Relatório de ${sanitizeForPdf(report.child.name)}`, pageWidth / 2, 18, { align: "center" })
       doc.setFontSize(11)
       doc.text(
         `Últimos ${report.period.days} dias (desde ${report.period.since})`,
@@ -66,17 +67,25 @@ export function ReportExport({ childId, childName, days = 30 }: ReportExportProp
 
       autoTable(doc, {
         startY: y + 4,
-        head: [["Data", "Categoria", "Autor", "Descrição", "⭐"]],
+        head: [["Data", "Categoria", "Autor", "Descrição", "Estrelas"]],
         body: report.events.map((event) => [
           new Date(event.at).toLocaleDateString("pt-BR"),
-          event.category,
-          event.author,
-          event.description,
+          sanitizeForPdf(event.category),
+          sanitizeForPdf(event.author),
+          sanitizeForPdf(event.description),
           event.starsChange === null ? "" : String(event.starsChange),
         ]),
-        styles: { fontSize: 8 },
+        styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak", valign: "top" },
         headStyles: { fillColor: [124, 58, 237] },
-        columnStyles: { 3: { cellWidth: 80 } },
+        // Larguras somam ~182mm (largura útil de uma A4 com margem de 14mm
+        // de cada lado); Descrição fica com o espaço que sobra.
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 28 },
+          2: { cellWidth: 24 },
+          3: { cellWidth: "auto" },
+          4: { cellWidth: 16, halign: "right" },
+        },
         margin: { left: 14, right: 14 },
       })
 

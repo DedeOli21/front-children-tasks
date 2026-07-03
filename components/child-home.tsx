@@ -10,7 +10,8 @@ import { RoutineSchedule } from "@/components/routine-schedule"
 import { Confetti } from "@/components/confetti"
 import { StreakDisplay } from "@/components/streak-display"
 import { MysteryBox } from "@/components/mystery-box"
-import { Star, Gift, AlertTriangle, Clock, Loader2, LogOut, Package, Rocket, Check, Play, Timer, XCircle } from "lucide-react"
+import { Star, Gift, AlertTriangle, Clock, Loader2, LogOut, Package, Rocket, Check, Play, Timer, XCircle, Sprout } from "lucide-react"
+import { PetScreen } from "@/components/pet/pet-screen"
 import {
   starsApi,
   tasksApi,
@@ -34,7 +35,7 @@ import {
   type FamilyGoal,
 } from "@/lib/api"
 
-type ChildTab = "tasks" | "routine" | "penalties" | "rewards" | "mystery"
+type ChildTab = "tasks" | "pet" | "routine" | "penalties" | "rewards" | "mystery"
 
 interface ChildHomeProps {
   childName: string
@@ -354,7 +355,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
         )}
       </div>
 
-      <nav className="sticky top-16 z-30 mx-4 grid grid-cols-5 gap-1 rounded-2xl bg-card p-2 shadow-lg">
+      <nav className="sticky top-16 z-30 mx-4 grid grid-cols-6 gap-1 rounded-2xl bg-card p-2 shadow-lg">
         <button
           onClick={() => setActiveTab("tasks")}
           className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 font-bold transition-all duration-300 ${
@@ -365,6 +366,17 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
         >
           <Star className="h-4 w-4" />
           <span className="text-[10px]">Tarefas</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("pet")}
+          className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 font-bold transition-all duration-300 ${
+            activeTab === "pet"
+              ? "bg-gradient-to-r from-emerald-500 to-lime-500 text-white shadow-md"
+              : "bg-muted text-muted-foreground hover:bg-secondary"
+          }`}
+        >
+          <Sprout className="h-4 w-4" />
+          <span className="text-[10px]">Planta</span>
         </button>
         <button
           onClick={() => setActiveTab("routine")}
@@ -513,6 +525,8 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
               </div>
             )}
           </div>
+        ) : activeTab === "pet" ? (
+          <PetScreen stars={stars} onStarsChange={setStars} />
         ) : activeTab === "routine" ? (
           <RoutineSchedule routines={routines} />
         ) : activeTab === "penalties" ? (

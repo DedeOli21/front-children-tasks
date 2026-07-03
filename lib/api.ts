@@ -889,6 +889,114 @@ export const observationsApi = {
     fetchWithAuth(`/api/observations?childId=${childId}`),
 }
 
+// ============ PET VIRTUAL (Planta da Consistência) ============
+export type PetStage = "seed" | "sprout" | "growing" | "blooming"
+export type PetMood = "happy" | "thirsty" | "hungry" | "sad"
+export type ShopItemType = "water" | "food" | "skin" | "background" | "effect"
+
+export interface PetCosmetic {
+  id: string
+  name: string
+  emoji: string
+}
+
+export interface VirtualPet {
+  id: string
+  childId: string
+  name: string
+  waterLevel: number
+  nutritionLevel: number
+  xp: number
+  stage: PetStage
+  mood: PetMood
+  wilted: boolean
+  skin: PetCosmetic | null
+  background: PetCosmetic | null
+  effect: PetCosmetic | null
+}
+
+export interface PetShopItem {
+  id: string
+  type: ShopItemType
+  name: string
+  emoji: string
+  description: string | null
+  price: number
+  restoreAmount: number
+  familyId: string | null
+  active: boolean
+}
+
+export interface PetInventoryItem {
+  shopItemId: string
+  name: string
+  emoji: string
+  type: ShopItemType
+  restoreAmount: number
+  quantity: number
+  equipped: boolean
+}
+
+export const petApi = {
+  get: (childId?: string): Promise<VirtualPet> => fetchWithAuth(withChild("/api/pet", childId)),
+
+  rename: (name: string): Promise<{ name: string; message: string }> =>
+    fetchWithAuth("/api/pet/name", {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+
+  care: (shopItemId: string): Promise<{
+    waterLevel: number
+    nutritionLevel: number
+    xp: number
+    stage: PetStage
+    mood: PetMood
+    remaining: number
+    message: string
+  }> =>
+    fetchWithAuth("/api/pet/care", {
+      method: "POST",
+      body: JSON.stringify({ shopItemId }),
+    }),
+
+  shop: (): Promise<PetShopItem[]> => fetchWithAuth("/api/pet/shop"),
+
+  buy: (itemId: string): Promise<{ quantity: number; currentStars: number; message: string }> =>
+    fetchWithAuth(`/api/pet/shop/${itemId}/buy`, { method: "POST" }),
+
+  inventory: (childId?: string): Promise<PetInventoryItem[]> =>
+    fetchWithAuth(withChild("/api/pet/inventory", childId)),
+
+  equip: (itemId: string): Promise<{ equipped: boolean; message: string }> =>
+    fetchWithAuth(`/api/pet/inventory/${itemId}/equip`, { method: "PATCH" }),
+
+  // Economia Botânica (responsável)
+  createShopItem: (data: {
+    type: ShopItemType
+    name: string
+    emoji?: string
+    description?: string
+    price: number
+    restoreAmount?: number
+  }): Promise<PetShopItem> =>
+    fetchWithAuth("/api/pet/shop-items", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateShopItem: (id: string, data: Partial<{ name: string; emoji: string; description: string; price: number; restoreAmount: number; active: boolean }>): Promise<PetShopItem> =>
+    fetchWithAuth(`/api/pet/shop-items/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  removeShopItem: (id: string) =>
+    fetchWithAuth(`/api/pet/shop-items/${id}`, {
+      method: "DELETE",
+    }),
+}
+
 // ============ MENSAGENS (professor ↔ terapeuta) ============
 export interface ChatMessage {
   id: string

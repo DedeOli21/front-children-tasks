@@ -1,6 +1,0 @@
-feat(front-end): React Query, hub parental e gamificacao (cofrinho, streak, foco)
-
-- Adiciona TanStack React Query com Providers, query-keys e contexto de crianca selecionada
-- Refatora painel dos pais: extrai ControlHub tabulado (aprovacoes, planejamento, economia, suporte)
-- Expande lib/api com cofrinho familiar, eventos surpresa, modo foco e streak gamificado
-- Enriquece visao da crianca: metas compartilhadas, missões academicas e timer de foco

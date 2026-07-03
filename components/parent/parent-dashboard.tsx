@@ -19,9 +19,11 @@ import {
   Minus,
   X,
   CalendarDays,
+  Sprout,
 } from "lucide-react"
 import { ControlHub } from "@/components/parent/control-hub"
 import { RoutinePlanner } from "@/components/parent/routine-planner"
+import { BotanicEconomy } from "@/components/parent/botanic-economy"
 import { PenaltyList } from "@/components/penalty-list"
 import { RewardsShop } from "@/components/rewards-shop"
 import { HistoryReport } from "@/components/admin/history-report"
@@ -47,7 +49,7 @@ import {
 import { queryKeys } from "@/lib/query-keys"
 import { useSelectedChild } from "@/contexts/selected-child-context"
 
-type ParentTab = "monitor" | "planner" | "reports" | "history" | "manage"
+type ParentTab = "monitor" | "planner" | "botanic" | "reports" | "history" | "manage"
 
 interface ParentDashboardProps {
   parentName: string
@@ -589,11 +591,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       </section>
 
       {/* Navegação */}
-      <nav className="sticky top-16 z-30 mx-4 mt-2 grid grid-cols-5 gap-1 rounded-2xl bg-white p-2 shadow-lg">
+      <nav className="sticky top-16 z-30 mx-4 mt-2 grid grid-cols-6 gap-1 rounded-2xl bg-white p-2 shadow-lg">
         {(
           [
             { id: "monitor", label: "Acompanhar", icon: Users },
             { id: "planner", label: "Rotinas", icon: CalendarDays },
+            { id: "botanic", label: "Loja 🌱", icon: Sprout },
             { id: "reports", label: "Escola", icon: GraduationCap },
             { id: "history", label: "Histórico", icon: ClipboardList },
             { id: "manage", label: "Gerenciar", icon: Settings },
@@ -781,6 +784,8 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
             selectedChildId={selectedChildId}
             onStarsChanged={updateChildStars}
           />
+        ) : activeTab === "botanic" ? (
+          <BotanicEconomy />
         ) : activeTab === "reports" && selectedChild ? (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-2xl bg-indigo-50 p-4 shadow-lg">

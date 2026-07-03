@@ -24,6 +24,8 @@ import {
 import { ControlHub } from "@/components/parent/control-hub"
 import { RoutinePlanner } from "@/components/parent/routine-planner"
 import { BotanicEconomy } from "@/components/parent/botanic-economy"
+import { NotificationBell } from "@/components/shared/notification-bell"
+import { ReportExport } from "@/components/shared/report-export"
 import { PenaltyList } from "@/components/penalty-list"
 import { RewardsShop } from "@/components/rewards-shop"
 import { HistoryReport } from "@/components/admin/history-report"
@@ -546,6 +548,7 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
             <h1 className="text-lg font-black text-white drop-shadow-md">Painel da Família</h1>
             <p className="text-xs text-white/70">Olá, {parentName}</p>
           </div>
+          <NotificationBell />
           <button
             onClick={onLogout}
             className="flex items-center gap-1 rounded-xl bg-white/20 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-white/30"
@@ -792,10 +795,11 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100">
                 <GraduationCap className="h-6 w-6 text-indigo-500" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-lg font-bold text-indigo-700">Relatórios da escola</p>
                 <p className="text-sm text-indigo-600/80">Registros diários enviados pelo professor</p>
               </div>
+              <ReportExport childId={selectedChild.id} childName={selectedChild.name} />
             </div>
 
             {reports.length === 0 ? (

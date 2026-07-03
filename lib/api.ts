@@ -910,6 +910,8 @@ export interface VirtualPet {
   stage: PetStage
   mood: PetMood
   wilted: boolean
+  sick: boolean
+  sickSince: string | null
   skin: PetCosmetic | null
   background: PetCosmetic | null
   effect: PetCosmetic | null
@@ -995,6 +997,89 @@ export const petApi = {
     fetchWithAuth(`/api/pet/shop-items/${id}`, {
       method: "DELETE",
     }),
+}
+
+// ============ NOTIFICAÇÕES ============
+export interface AppNotification {
+  id: string
+  type: "pet_thirsty" | "pet_sick" | "approval_pending" | "weekly_summary" | "daily_penalty" | "general"
+  title: string
+  body: string | null
+  readAt: string | null
+  createdAt: string
+}
+
+export const notificationsApi = {
+  list: (): Promise<AppNotification[]> => fetchWithAuth("/api/notifications"),
+  unreadCount: (): Promise<{ unread: number }> => fetchWithAuth("/api/notifications/unread-count"),
+  readAll: (): Promise<{ marked: number }> =>
+    fetchWithAuth("/api/notifications/read-all", { method: "PATCH" }),
+}
+
+// ============ CONFIGURAÇÕES DA FAMÍLIA ============
+export interface FamilySettings {
+  applyDailyPenalty: boolean
+  dailyPenaltyStars: number
+}
+
+export const settingsApi = {
+  get: (): Promise<FamilySettings> => fetchWithAuth("/api/settings"),
+  update: (data: Partial<FamilySettings>): Promise<FamilySettings> =>
+    fetchWithAuth("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+}
+
+// ============ RELATÓRIOS ============
+export interface CompiledReport {
+  child: {
+    id: string
+    name: string
+    currentStars: number
+    currentStreak: number
+    longestStreak: number
+    streakFreezes: number
+  }
+  period: { since: string; days: number }
+  totals: {
+    starsEarned: number
+    starsLost: number
+    tasksApproved: number
+    manualPenalties: number
+    automaticPenalties: number
+    freezesUsed: number
+    observations: number
+    schoolReports: number
+  }
+  events: {
+    at: string
+    category: string
+    author: string
+    description: string
+    starsChange: number | null
+  }[]
+}
+
+export const reportsApi = {
+  compile: (childId: string, days = 30): Promise<CompiledReport> =>
+    fetchWithAuth(`/api/reports/compile?childId=${childId}&days=${days}`),
+
+  // CSV exige o header de auth: baixa como blob e dispara o download
+  downloadCsv: async (childId: string, childName: string, days = 30): Promise<void> => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
+    const response = await fetch(`${API_BASE_URL}/api/reports/export.csv?childId=${childId}&days=${days}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    if (!response.ok) throw new Error("Não foi possível gerar o CSV")
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `relatorio-${childName.toLowerCase().replace(/\s+/g, "-")}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  },
 }
 
 // ============ MENSAGENS (professor ↔ terapeuta) ============

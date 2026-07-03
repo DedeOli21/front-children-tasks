@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Loader2, Plus, Sprout, Trash2, X } from "lucide-react"
-import { petApi, type PetShopItem, type ShopItemType } from "@/lib/api"
+import { petApi, settingsApi, type PetShopItem, type ShopItemType, type FamilySettings } from "@/lib/api"
 
 const TYPE_LABELS: Record<ShopItemType, string> = {
   water: "💧 Água",
@@ -72,6 +72,9 @@ export function BotanicEconomy() {
           Novo item
         </button>
       </div>
+
+      {/* Penalidade da meia-noite */}
+      <PenaltySettingsCard />
 
       {/* Itens da família (editáveis) */}
       <div className="rounded-2xl bg-white p-4 shadow-lg">
@@ -255,6 +258,67 @@ function CreateItemModal({
             Adicionar à loja
           </button>
         </form>
+      </div>
+    </div>
+  )
+}
+
+
+// ============ CONFIGURAÇÃO DA PENALIDADE DA MEIA-NOITE ============
+function PenaltySettingsCard() {
+  const [settings, setSettings] = useState<FamilySettings | null>(null)
+
+  useEffect(() => {
+    settingsApi.get().then(setSettings).catch(() => setSettings(null))
+  }, [])
+
+  const save = async (patch: Partial<FamilySettings>) => {
+    try {
+      const updated = await settingsApi.update(patch)
+      setSettings(updated)
+      toast.success("Configuração salva")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar")
+    }
+  }
+
+  if (!settings) return null
+
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-lg">
+      <p className="text-xs font-bold uppercase text-slate-400">Penalidade da meia-noite</p>
+      <p className="mt-1 text-sm text-slate-500">
+        Dia incompleto sem Regador Mágico: a sequência zera e a planta adoece. A dedução de
+        estrelas é opcional:
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={settings.applyDailyPenalty}
+            onChange={(e) => save({ applyDailyPenalty: e.target.checked })}
+            className="h-5 w-5 accent-red-500"
+          />
+          <span className="text-sm font-bold text-slate-600">Deduzir estrelas automaticamente</span>
+        </label>
+        {settings.applyDailyPenalty && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-500">Estrelas por dia perdido:</span>
+            {[1, 2, 3, 5].map((value) => (
+              <button
+                key={value}
+                onClick={() => save({ dailyPenaltyStars: value })}
+                className={`h-9 w-9 rounded-lg text-sm font-black transition-all ${
+                  settings.dailyPenaltyStars === value
+                    ? "bg-red-400 text-white shadow"
+                    : "bg-slate-100 text-slate-500 hover:bg-red-100"
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, RotateCcw, Sparkles } from "lucide-react"
+import { Check, RotateCcw, Sparkles, Volume2 } from "lucide-react"
 import type { Task } from "@/lib/api"
 
 interface TaskListProps {
@@ -15,6 +15,21 @@ interface TaskListProps {
 
 export function TaskList({ tasks, completedTasks, onTaskComplete, onResetDay, childName }: TaskListProps) {
   const [animatingTask, setAnimatingTask] = useState<string | null>(null)
+
+  // Acessibilidade lúdica: lê as tarefas pendentes em voz alta (pt-BR)
+  const speakTasks = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return
+    const pending = tasks.filter((task) => !completedTasks.includes(task.id))
+    const text =
+      pending.length === 0
+        ? "Parabéns! Você já completou todas as tarefas de hoje!"
+        : `Suas tarefas de hoje são: ${pending.map((task) => task.title).join(". ")}`
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = "pt-BR"
+    utterance.rate = 0.95
+    window.speechSynthesis.speak(utterance)
+  }
 
   const handleTaskClick = (taskId: string) => {
     if (!completedTasks.includes(taskId)) {
@@ -44,6 +59,14 @@ export function TaskList({ tasks, completedTasks, onTaskComplete, onResetDay, ch
             </p>
           </div>
         </div>
+        <button
+          onClick={speakTasks}
+          title="Ouvir as tarefas"
+          className="flex items-center gap-2 rounded-xl bg-sky-100 px-3 py-2 font-semibold text-sky-600 transition-all hover:bg-sky-200 active:scale-95"
+        >
+          <Volume2 className="h-4 w-4" />
+          <span className="hidden sm:inline">Ouvir</span>
+        </button>
         {onResetDay && (
           <button
             onClick={onResetDay}

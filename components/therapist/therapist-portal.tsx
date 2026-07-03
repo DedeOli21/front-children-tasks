@@ -29,6 +29,8 @@ import {
   type StarRequest,
 } from "@/lib/api"
 import { MessagesPanel } from "@/components/shared/messages-panel"
+import { NotificationBell } from "@/components/shared/notification-bell"
+import { ReportExport } from "@/components/shared/report-export"
 
 type TherapistTab = "timeline" | "messages" | "suggestions"
 
@@ -133,6 +135,7 @@ export function TherapistPortal({ therapistName, onLogout }: TherapistPortalProp
               <p className="text-xs text-white/70">Olá, {therapistName}</p>
             </div>
           </div>
+          <NotificationBell />
           <button
             onClick={onLogout}
             className="flex items-center gap-1 rounded-xl bg-white/20 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-white/30"
@@ -213,6 +216,12 @@ export function TherapistPortal({ therapistName, onLogout }: TherapistPortalProp
                   <Sparkles className="h-5 w-5" />
                   Bonificar {selected.name}
                 </button>
+
+                {/* Exportação do relatório compilado */}
+                <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-lg">
+                  <p className="text-sm font-bold text-slate-600">Relatório dos últimos 30 dias</p>
+                  <ReportExport childId={selected.id} childName={selected.name} />
+                </div>
 
                 {/* Nota rápida */}
                 <form onSubmit={handleSaveNote} className="rounded-2xl bg-white p-4 shadow-lg">

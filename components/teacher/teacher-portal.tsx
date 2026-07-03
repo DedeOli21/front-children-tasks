@@ -24,6 +24,7 @@ import {
   type MissionStatus,
 } from "@/lib/api"
 import { MessagesPanel } from "@/components/shared/messages-panel"
+import { NotificationBell } from "@/components/shared/notification-bell"
 
 const RATING_EMOJIS = ["😣", "😕", "🙂", "😄", "🤩"]
 const RATING_LABELS = ["Dia difícil", "Instável", "Normal", "Bom dia", "Excelente"]
@@ -154,6 +155,7 @@ export function TeacherPortal({ teacherName, onLogout }: TeacherPortalProps) {
               <p className="text-xs text-white/70">Olá, {teacherName}</p>
             </div>
           </div>
+          <NotificationBell />
           <button
             onClick={onLogout}
             className="flex items-center gap-1 rounded-xl bg-white/20 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-white/30"

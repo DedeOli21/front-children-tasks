@@ -13,6 +13,7 @@ import {
   Check,
   X,
 } from "lucide-react"
+import { playWaterSound, playEatSound, playCoinSound, playBubbleSound } from "@/lib/sound"
 import {
   petApi,
   type VirtualPet,
@@ -131,7 +132,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
           )
           .filter((entry) => entry.quantity > 0),
       )
-      // Planta reage: respingo + pulinho feliz
+      // Planta reage: som + respingo + pulinho feliz
+      if (item.type === "water") playWaterSound()
+      else playEatSound()
       setCareEmoji(item.type === "water" ? "💧" : "😋")
       setIsReacting(true)
       setTimeout(() => {
@@ -147,6 +150,7 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
   const handleBuy = async (item: PetShopItem) => {
     try {
       const result = await petApi.buy(item.id)
+      playCoinSound()
       onStarsChange(result.currentStars)
       toast.success(result.message)
       const fresh = await petApi.inventory().catch(() => inventory)
@@ -159,6 +163,7 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
   const handleEquip = async (item: PetInventoryItem) => {
     try {
       const result = await petApi.equip(item.shopItemId)
+      playBubbleSound()
       toast.success(result.message)
       const [freshPet, freshInventory] = await Promise.all([petApi.get(), petApi.inventory()])
       setPet(freshPet)
@@ -188,7 +193,7 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
     )
   }
 
-  const plantEmoji = pet.wilted ? "🥀" : (pet.skin?.emoji ?? STAGE_EMOJI[pet.stage])
+  const plantEmoji = pet.sick || pet.wilted ? "🥀" : (pet.skin?.emoji ?? STAGE_EMOJI[pet.stage])
   const isSpace = pet.background?.emoji === "🌌"
 
   return (
@@ -277,11 +282,20 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
           </span>
         </div>
 
-        {pet.wilted && (
+        {pet.sick ? (
+          <div className="relative z-10 mt-1 rounded-xl bg-red-50/90 p-2 text-center">
+            <p className="text-sm font-bold text-red-500">
+              🌡️ Sua plantinha está doente! As tarefas de ontem ficaram incompletas...
+            </p>
+            <p className="text-xs font-semibold text-red-400">
+              Complete todos os combinados de hoje para curá-la 💊
+            </p>
+          </div>
+        ) : pet.wilted ? (
           <p className="relative z-10 mt-1 text-center text-sm font-bold text-red-500">
             Ela murchou com a quebra da sequência... complete os combinados para replantar! 🌱
           </p>
-        )}
+        ) : null}
 
         {/* Barras de sobrevivência */}
         <div className="relative z-10 mt-4 space-y-2">

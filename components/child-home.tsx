@@ -12,6 +12,7 @@ import { StreakDisplay } from "@/components/streak-display"
 import { MysteryBox } from "@/components/mystery-box"
 import { Star, Gift, AlertTriangle, Clock, Loader2, LogOut, Package, Rocket, Check, Play, Timer, XCircle, Sprout } from "lucide-react"
 import { PetScreen } from "@/components/pet/pet-screen"
+import { NotificationBell } from "@/components/shared/notification-bell"
 import {
   starsApi,
   tasksApi,
@@ -293,13 +294,16 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           <h1 className="text-lg font-black text-primary-foreground drop-shadow-md">
             Quadro de Recompensas de {childName}
           </h1>
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-1 rounded-xl bg-white/20 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-white/30"
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-1 rounded-xl bg-white/20 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-white/30"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </button>
+          </div>
         </div>
       </header>
 

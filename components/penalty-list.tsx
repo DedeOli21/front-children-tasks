@@ -11,7 +11,11 @@ interface PenaltyListProps {
   readOnly?: boolean
 }
 
-export function PenaltyList({ penalties, onPenalty, readOnly = false }: PenaltyListProps) {
+export function PenaltyList({
+  penalties,
+  onPenalty,
+  readOnly = false,
+}: PenaltyListProps) {
   const [animatingPenalty, setAnimatingPenalty] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState<string | null>(null)
 
@@ -38,16 +42,27 @@ export function PenaltyList({ penalties, onPenalty, readOnly = false }: PenaltyL
         </div>
         <div>
           <p className="text-lg font-bold text-red-700">
-            {readOnly ? "Cuidado para não perder estrelas!" : "Opa! Algo deu errado?"}
+            {readOnly
+              ? "Cuidado para não perder estrelas!"
+              : "Opa! Algo deu errado?"}
           </p>
           <p className="text-sm text-red-600/80">
-            {readOnly ? "Essas atitudes fazem perder estrelas" : "Toque abaixo para registrar"}
+            {readOnly
+              ? "Essas atitudes fazem perder estrelas"
+              : "Toque abaixo para registrar"}
           </p>
         </div>
       </div>
 
       {/* Penalty Cards - Use penalties from props */}
       <div className="grid gap-3">
+        {penalties.length === 0 && (
+          <div className="rounded-2xl border-2 border-dashed border-muted-foreground/30 bg-muted/50 p-6 text-center">
+            <p className="font-semibold text-muted-foreground">
+              Nenhuma penalidade cadastrada.
+            </p>
+          </div>
+        )}
         {penalties.map((penalty) => {
           const isAnimating = animatingPenalty === penalty.id
           const isConfirming = showConfirm === penalty.id
@@ -68,9 +83,12 @@ export function PenaltyList({ penalties, onPenalty, readOnly = false }: PenaltyL
 
                   {/* Label - Use penalty.title instead of penalty.label */}
                   <div className="flex-1">
-                    <p className="text-lg font-bold text-foreground">{penalty.title}</p>
+                    <p className="text-lg font-bold text-foreground">
+                      {penalty.title}
+                    </p>
                     <p className="text-sm font-medium text-red-500">
-                      -{penalty.amount} {penalty.amount === 1 ? "estrela" : "estrelas"}
+                      -{penalty.amount}{" "}
+                      {penalty.amount === 1 ? "estrela" : "estrelas"}
                     </p>
                   </div>
 
@@ -85,7 +103,9 @@ export function PenaltyList({ penalties, onPenalty, readOnly = false }: PenaltyL
               {isConfirming && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
                   <div className="flex flex-col items-center gap-3 p-4">
-                    <p className="text-center font-bold text-white">Confirmar?</p>
+                    <p className="text-center font-bold text-white">
+                      Confirmar?
+                    </p>
                     <div className="flex gap-3">
                       <button
                         onClick={() => setShowConfirm(null)}
@@ -94,7 +114,9 @@ export function PenaltyList({ penalties, onPenalty, readOnly = false }: PenaltyL
                         Não
                       </button>
                       <button
-                        onClick={() => confirmPenalty(penalty.id, penalty.amount)}
+                        onClick={() =>
+                          confirmPenalty(penalty.id, penalty.amount)
+                        }
                         className="rounded-xl bg-red-500 px-5 py-2 font-bold text-white transition-all hover:bg-red-600 active:scale-95"
                       >
                         Sim
@@ -112,7 +134,8 @@ export function PenaltyList({ penalties, onPenalty, readOnly = false }: PenaltyL
       {!readOnly && (
         <div className="rounded-xl bg-amber-50 p-4 text-center">
           <p className="text-sm text-amber-700">
-            <strong>Dica:</strong> Converse com a criança sobre o que aconteceu antes de aplicar
+            <strong>Dica:</strong> Converse com a criança sobre o que aconteceu
+            antes de aplicar
           </p>
         </div>
       )}

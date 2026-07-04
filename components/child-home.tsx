@@ -1,15 +1,15 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
-import { StarPanel } from "@/components/star-panel";
-import { TaskList } from "@/components/task-list";
-import { RewardsShop } from "@/components/rewards-shop";
-import { PenaltyList } from "@/components/penalty-list";
-import { RoutineSchedule } from "@/components/routine-schedule";
-import { Confetti } from "@/components/confetti";
-import { StreakDisplay } from "@/components/streak-display";
-import { MysteryBox } from "@/components/mystery-box";
+import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
+import { StarPanel } from "@/components/star-panel"
+import { TaskList } from "@/components/task-list"
+import { RewardsShop } from "@/components/rewards-shop"
+import { PenaltyList } from "@/components/penalty-list"
+import { RoutineSchedule } from "@/components/routine-schedule"
+import { Confetti } from "@/components/confetti"
+import { StreakDisplay } from "@/components/streak-display"
+import { MysteryBox } from "@/components/mystery-box"
 import {
   Star,
   Gift,
@@ -24,9 +24,9 @@ import {
   Timer,
   XCircle,
   Sprout,
-} from "lucide-react";
-import { PetScreen } from "@/components/pet/pet-screen";
-import { NotificationBell } from "@/components/shared/notification-bell";
+} from "lucide-react"
+import { PetScreen } from "@/components/pet/pet-screen"
+import { NotificationBell } from "@/components/shared/notification-bell"
 import {
   starsApi,
   tasksApi,
@@ -50,45 +50,45 @@ import {
   type StreakData,
   type FocusSession,
   type FamilyGoal,
-} from "@/lib/api";
+} from "@/lib/api"
 
 type ChildTab =
-  "tasks" | "pet" | "routine" | "penalties" | "rewards" | "mystery";
+  "tasks" | "pet" | "routine" | "penalties" | "rewards" | "mystery"
 
 interface ChildHomeProps {
-  childName: string;
-  onLogout: () => void;
+  childName: string
+  onLogout: () => void
 }
 
 // Visão gamificada da criança: completar tarefas, ver rotina,
 // resgatar recompensas e abrir a caixa surpresa.
 export function ChildHome({ childName, onLogout }: ChildHomeProps) {
-  const [activeTab, setActiveTab] = useState<ChildTab>("tasks");
-  const [stars, setStars] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [longestStreak, setLongestStreak] = useState(0);
-  const [freezes, setFreezes] = useState(0);
-  const [plant, setPlant] = useState<StreakData["plant"] | null>(null);
-  const [pendingBonuses, setPendingBonuses] = useState<StarRequest[]>([]);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [activeTab, setActiveTab] = useState<ChildTab>("tasks")
+  const [stars, setStars] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [longestStreak, setLongestStreak] = useState(0)
+  const [freezes, setFreezes] = useState(0)
+  const [plant, setPlant] = useState<StreakData["plant"] | null>(null)
+  const [pendingBonuses, setPendingBonuses] = useState<StarRequest[]>([])
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [penalties, setPenalties] = useState<Penalty[]>([]);
-  const [rewards, setRewards] = useState<Reward[]>([]);
-  const [routines, setRoutines] = useState<RoutineItem[]>([]);
-  const [goals, setGoals] = useState<FamilyGoal[]>([]);
-  const [mysteryPrizes, setMysteryPrizes] = useState<MysteryPrize[]>([]);
-  const [mysteryBoxCost, setMysteryBoxCost] = useState(5);
-  const [focusSession, setFocusSession] = useState<FocusSession | null>(null);
-  const [focusMissionTitle, setFocusMissionTitle] = useState("");
-  const [focusRemainingSeconds, setFocusRemainingSeconds] = useState(0);
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [missions, setMissions] = useState<Mission[]>([])
+  const [penalties, setPenalties] = useState<Penalty[]>([])
+  const [rewards, setRewards] = useState<Reward[]>([])
+  const [routines, setRoutines] = useState<RoutineItem[]>([])
+  const [goals, setGoals] = useState<FamilyGoal[]>([])
+  const [mysteryPrizes, setMysteryPrizes] = useState<MysteryPrize[]>([])
+  const [mysteryBoxCost, setMysteryBoxCost] = useState(5)
+  const [focusSession, setFocusSession] = useState<FocusSession | null>(null)
+  const [focusMissionTitle, setFocusMissionTitle] = useState("")
+  const [focusRemainingSeconds, setFocusRemainingSeconds] = useState(0)
 
   const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(false);
+    setIsLoading(true)
+    setLoadError(false)
     try {
       const [
         starsData,
@@ -116,9 +116,9 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           .getConfig()
           .catch(() => ({ cost: 5, prizes: [] as MysteryPrize[] })),
         starsApi.listRequests().catch(() => [] as StarRequest[]),
-      ]);
+      ])
 
-      setStars(starsData.stars ?? 0);
+      setStars(starsData.stars ?? 0)
       setTasks([
         ...tasksData.map((task) => ({ ...task, source: "classic" as const })),
         ...activeTasksData.map((task) => ({
@@ -130,30 +130,46 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           completedAt: task.completedAt ?? undefined,
           source: "active" as const,
         })),
-      ]);
-      setMissions(missionsData);
-      setPenalties(penaltiesData);
-      setRewards(rewardsData);
-      setRoutines(routinesData);
-      setGoals(goalsData);
-      setStreak(streakData?.currentStreak ?? 0);
-      setLongestStreak(streakData?.longestStreak ?? 0);
-      setFreezes(streakData?.streakFreezes ?? 0);
-      setPlant(streakData?.plant ?? null);
-      setPendingBonuses(bonusesData);
-      setMysteryPrizes(mysteryBoxConfig.prizes);
-      setMysteryBoxCost(mysteryBoxConfig.cost || 5);
+      ])
+      setMissions(missionsData)
+      setPenalties(penaltiesData)
+      setRewards(rewardsData)
+      setRoutines(routinesData)
+      setGoals(goalsData)
+      setStreak(streakData?.currentStreak ?? 0)
+      setLongestStreak(streakData?.longestStreak ?? 0)
+      setFreezes(streakData?.streakFreezes ?? 0)
+      setPlant(streakData?.plant ?? null)
+      setPendingBonuses(bonusesData)
+      setMysteryPrizes(mysteryBoxConfig.prizes)
+      setMysteryBoxCost(mysteryBoxConfig.cost || 5)
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-      setLoadError(true);
+      console.error("Erro ao carregar dados:", error)
+      setLoadError(true)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadData()
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshWhenVisible)
+    window.addEventListener("focus", loadData)
+
+    return () => {
+      document.removeEventListener("visibilitychange", refreshWhenVisible)
+      window.removeEventListener("focus", loadData)
+    }
+  }, [loadData])
 
   useEffect(() => {
     if (
@@ -161,23 +177,23 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       focusSession.status !== "running" ||
       focusRemainingSeconds <= 0
     )
-      return;
+      return
 
     const timer = window.setInterval(() => {
-      setFocusRemainingSeconds((seconds) => Math.max(0, seconds - 1));
-    }, 1000);
+      setFocusRemainingSeconds((seconds) => Math.max(0, seconds - 1))
+    }, 1000)
 
-    return () => window.clearInterval(timer);
-  }, [focusRemainingSeconds, focusSession]);
+    return () => window.clearInterval(timer)
+  }, [focusRemainingSeconds, focusSession])
 
   const celebrate = (duration = 2000) => {
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), duration);
-  };
+    setShowConfetti(true)
+    setTimeout(() => setShowConfetti(false), duration)
+  }
 
   const handleTaskComplete = async (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task || task.completed) return;
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task || task.completed) return
 
     // Atualização otimista com rollback em caso de erro.
     // As estrelas só chegam quando o responsável aprovar.
@@ -185,159 +201,159 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       prev.map((t) =>
         t.id === taskId ? { ...t, completed: true, status: "completed" } : t,
       ),
-    );
-    celebrate();
+    )
+    celebrate()
 
     try {
       const result =
         task.source === "active"
           ? await activeTasksApi.complete(taskId)
-          : await tasksApi.complete(taskId);
+          : await tasksApi.complete(taskId)
       if ("streak" in result && result.streak !== undefined)
-        setStreak(result.streak);
-      toast.info("Tarefa enviada! Aguardando o chefe aprovar 🕐");
+        setStreak(result.streak)
+      toast.info("Tarefa enviada! Aguardando o chefe aprovar 🕐")
     } catch (error) {
-      console.error("Erro ao completar tarefa:", error);
+      console.error("Erro ao completar tarefa:", error)
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId ? { ...t, completed: false, status: "pending" } : t,
         ),
-      );
-      toast.error("Não foi possível completar a tarefa. Tente novamente.");
+      )
+      toast.error("Não foi possível completar a tarefa. Tente novamente.")
     }
-  };
+  }
 
   const handleMissionComplete = async (missionId: string) => {
-    const mission = missions.find((m) => m.id === missionId);
-    if (!mission || mission.status !== "scheduled") return;
+    const mission = missions.find((m) => m.id === missionId)
+    if (!mission || mission.status !== "scheduled") return
 
     setMissions((prev) =>
       prev.map((m) => (m.id === missionId ? { ...m, status: "completed" } : m)),
-    );
-    celebrate();
+    )
+    celebrate()
 
     try {
-      await missionsApi.complete(missionId);
-      toast.info("Missão enviada! Aguardando o chefe aprovar 🕐");
+      await missionsApi.complete(missionId)
+      toast.info("Missão enviada! Aguardando o chefe aprovar 🕐")
     } catch (error) {
-      console.error("Erro ao concluir missão:", error);
+      console.error("Erro ao concluir missão:", error)
       setMissions((prev) =>
         prev.map((m) =>
           m.id === missionId ? { ...m, status: "scheduled" } : m,
         ),
-      );
-      toast.error("Não foi possível concluir a missão. Tente novamente.");
+      )
+      toast.error("Não foi possível concluir a missão. Tente novamente.")
     }
-  };
+  }
 
   const handleRewardRedeem = async (rewardId: string) => {
-    const reward = rewards.find((r) => r.id === rewardId);
-    if (!reward || stars < reward.cost) return;
+    const reward = rewards.find((r) => r.id === rewardId)
+    if (!reward || stars < reward.cost) return
 
-    setStars((prev) => prev - reward.cost);
-    celebrate(3000);
+    setStars((prev) => prev - reward.cost)
+    celebrate(3000)
 
     try {
-      const result = await rewardsApi.redeem(rewardId);
-      if (result.currentStars !== undefined) setStars(result.currentStars);
-      if (result.streakFreezes !== undefined) setFreezes(result.streakFreezes);
+      const result = await rewardsApi.redeem(rewardId)
+      if (result.currentStars !== undefined) setStars(result.currentStars)
+      if (result.streakFreezes !== undefined) setFreezes(result.streakFreezes)
       if (reward.kind === "streak_freeze")
-        toast.success("Regador Mágico guardado para proteger sua plantinha!");
+        toast.success("Regador Mágico guardado para proteger sua plantinha!")
     } catch (error) {
-      console.error("Erro ao resgatar recompensa:", error);
-      setStars((prev) => prev + reward.cost);
+      console.error("Erro ao resgatar recompensa:", error)
+      setStars((prev) => prev + reward.cost)
       toast.error(
         error instanceof Error
           ? error.message
           : "Não foi possível resgatar a recompensa.",
-      );
+      )
     }
-  };
+  }
 
   const handleMysteryBoxOpen = async (): Promise<MysteryPrize> => {
     try {
-      const result = await mysteryBoxApi.open();
-      setStars(result.newBalance);
-      celebrate(3000);
-      return result.prize;
+      const result = await mysteryBoxApi.open()
+      setStars(result.newBalance)
+      celebrate(3000)
+      return result.prize
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : "Não foi possível abrir a caixa surpresa.",
-      );
-      throw error;
+      )
+      throw error
     }
-  };
+  }
 
   const handleGoalDeposit = async (goalId: string, amount: number) => {
     try {
-      const result = await goalsApi.deposit(goalId, { amount });
-      setStars(result.currentStars);
+      const result = await goalsApi.deposit(goalId, { amount })
+      setStars(result.currentStars)
       setGoals((prev) =>
         prev.map((goal) => (goal.id === result.goal.id ? result.goal : goal)),
-      );
-      toast.success(result.message);
+      )
+      toast.success(result.message)
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : "Não foi possível depositar no cofrinho.",
-      );
+      )
     }
-  };
+  }
 
   const handleStartFocus = async (mission: Mission) => {
-    if (mission.status !== "scheduled") return;
+    if (mission.status !== "scheduled") return
     try {
       const session = await focusApi.start({
         missionId: mission.id,
         durationMinutes: 15,
-      });
-      setFocusSession(session);
-      setFocusMissionTitle(mission.title);
-      setFocusRemainingSeconds(session.durationMinutes * 60);
-      toast.success("Modo Foco iniciado!");
+      })
+      setFocusSession(session)
+      setFocusMissionTitle(mission.title)
+      setFocusRemainingSeconds(session.durationMinutes * 60)
+      toast.success("Modo Foco iniciado!")
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : "Não foi possível iniciar o foco.",
-      );
+      )
     }
-  };
+  }
 
   const handleCompleteFocus = async () => {
-    if (!focusSession) return;
+    if (!focusSession) return
     try {
-      const session = await focusApi.complete(focusSession.id);
-      setFocusSession(session);
-      setFocusRemainingSeconds(0);
-      toast.success(session.message ?? "Foco concluído!");
+      const session = await focusApi.complete(focusSession.id)
+      setFocusSession(session)
+      setFocusRemainingSeconds(0)
+      toast.success(session.message ?? "Foco concluído!")
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : "Não foi possível concluir o foco.",
-      );
+      )
     }
-  };
+  }
 
   const handleAbandonFocus = async () => {
-    if (!focusSession) return;
+    if (!focusSession) return
     try {
-      const session = await focusApi.abandon(focusSession.id);
-      setFocusSession(session);
-      setFocusRemainingSeconds(0);
-      toast.info(session.message ?? "Sessão interrompida.");
+      const session = await focusApi.abandon(focusSession.id)
+      setFocusSession(session)
+      setFocusRemainingSeconds(0)
+      toast.info(session.message ?? "Sessão interrompida.")
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : "Não foi possível encerrar o foco.",
-      );
+      )
     }
-  };
+  }
 
   if (isLoading) {
     return (
@@ -349,7 +365,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           </p>
         </div>
       </main>
-    );
+    )
   }
 
   if (loadError) {
@@ -371,12 +387,12 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           Sair
         </button>
       </main>
-    );
+    )
   }
 
-  const completedTasks = tasks.filter((t) => t.completed).map((t) => t.id);
-  const focusMinutes = Math.floor(focusRemainingSeconds / 60);
-  const focusSeconds = focusRemainingSeconds % 60;
+  const completedTasks = tasks.filter((t) => t.completed).map((t) => t.id)
+  const focusMinutes = Math.floor(focusRemainingSeconds / 60)
+  const focusSeconds = focusRemainingSeconds % 60
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-yellow-50">
@@ -557,8 +573,8 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
                   </h2>
                 </div>
                 {missions.map((mission) => {
-                  const isDone = mission.status !== "scheduled";
-                  const isApproved = mission.status === "approved";
+                  const isDone = mission.status !== "scheduled"
+                  const isApproved = mission.status === "approved"
                   return (
                     <div
                       key={mission.id}
@@ -577,7 +593,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
                           !isDone &&
                           (event.key === "Enter" || event.key === " ")
                         )
-                          handleMissionComplete(mission.id);
+                          handleMissionComplete(mission.id)
                       }}
                     >
                       <div className="flex items-center gap-4">
@@ -639,8 +655,8 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
                         ) : (
                           <button
                             onClick={(event) => {
-                              event.stopPropagation();
-                              handleStartFocus(mission);
+                              event.stopPropagation()
+                              handleStartFocus(mission)
                             }}
                             className="flex shrink-0 items-center gap-1 rounded-xl bg-violet-100 px-3 py-2 text-sm font-black text-violet-700 transition-colors hover:bg-violet-200"
                           >
@@ -650,7 +666,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
                         )}
                       </div>
                     </div>
-                  );
+                  )
                 })}
               </div>
             )}
@@ -687,7 +703,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       {/* Bottom padding for mobile */}
       <div className="h-8" />
     </main>
-  );
+  )
 }
 
 function ChildGoalsPanel({
@@ -695,14 +711,14 @@ function ChildGoalsPanel({
   stars,
   onDeposit,
 }: {
-  goals: FamilyGoal[];
-  stars: number;
-  onDeposit: (goalId: string, amount: number) => void;
+  goals: FamilyGoal[]
+  stars: number
+  onDeposit: (goalId: string, amount: number) => void
 }) {
-  const activeGoals = goals.filter((goal) => goal.status === "active");
-  const [amountByGoal, setAmountByGoal] = useState<Record<string, string>>({});
+  const activeGoals = goals.filter((goal) => goal.status === "active")
+  const [amountByGoal, setAmountByGoal] = useState<Record<string, string>>({})
 
-  if (activeGoals.length === 0) return null;
+  if (activeGoals.length === 0) return null
 
   return (
     <div className="space-y-3">
@@ -724,9 +740,9 @@ function ChildGoalsPanel({
         const percent = Math.min(
           100,
           Math.round((goal.depositedStars / goal.targetStars) * 100),
-        );
-        const value = amountByGoal[goal.id] ?? "";
-        const amount = Number(value);
+        )
+        const value = amountByGoal[goal.id] ?? ""
+        const amount = Number(value)
         return (
           <div key={goal.id} className="rounded-2xl bg-card p-4 shadow-lg">
             <div className="flex items-center gap-3">
@@ -770,8 +786,8 @@ function ChildGoalsPanel({
               </button>
             </div>
           </div>
-        );
+        )
       })}
     </div>
-  );
+  )
 }

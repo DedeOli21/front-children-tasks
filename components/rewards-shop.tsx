@@ -15,7 +15,8 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
   const [showConfirmation, setShowConfirmation] = useState(false)
 
   // Recompensa mais barata define a mensagem de "quanto falta" no cabeçalho
-  const cheapestCost = rewards.length > 0 ? Math.min(...rewards.map((r) => r.cost)) : 0
+  const cheapestCost =
+    rewards.length > 0 ? Math.min(...rewards.map((r) => r.cost)) : 0
   const canRedeemAny = rewards.some((r) => stars >= r.cost)
 
   const handleRewardSelect = (rewardId: string) => {
@@ -43,9 +44,15 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
             <ShoppingBag className="h-6 w-6 text-accent-foreground" />
           </div>
           <div>
-            <p className="text-sm font-medium text-white/80">Loja de Recompensas</p>
+            <p className="text-sm font-medium text-white/80">
+              Loja de Recompensas
+            </p>
             <p className="text-xl font-bold text-white">
-              {canRedeemAny ? "Você pode resgatar!" : `Junte ${cheapestCost} estrelas`}
+              {rewards.length === 0
+                ? "Loja vazia"
+                : canRedeemAny
+                  ? "Você pode resgatar!"
+                  : `Junte ${cheapestCost} estrelas`}
             </p>
           </div>
         </div>
@@ -62,7 +69,8 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
           <p className="font-semibold text-secondary-foreground">
             Faltam{" "}
             <span className="text-primary">
-              {cheapestCost - stars} estrela{cheapestCost - stars !== 1 ? "s" : ""}
+              {cheapestCost - stars} estrela
+              {cheapestCost - stars !== 1 ? "s" : ""}
             </span>{" "}
             para desbloquear a primeira recompensa!
           </p>
@@ -71,6 +79,13 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
 
       {/* Rewards Grid - Use rewards from props */}
       <div className="grid grid-cols-2 gap-3">
+        {rewards.length === 0 && (
+          <div className="col-span-2 rounded-2xl border-2 border-dashed border-muted-foreground/30 bg-muted/50 p-6 text-center">
+            <p className="font-semibold text-muted-foreground">
+              Nenhuma recompensa cadastrada.
+            </p>
+          </div>
+        )}
         {rewards.map((reward) => {
           const canRedeem = stars >= reward.cost
           return (
@@ -100,20 +115,30 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
               {/* Emoji */}
               <div
                 className={`mb-3 flex h-16 w-16 items-center justify-center rounded-xl transition-all ${
-                  canRedeem ? "bg-gradient-to-br from-accent/20 to-orange-200 group-hover:scale-110" : "bg-muted"
+                  canRedeem
+                    ? "bg-gradient-to-br from-accent/20 to-orange-200 group-hover:scale-110"
+                    : "bg-muted"
                 }`}
               >
                 <span className="text-4xl">{reward.emoji}</span>
               </div>
 
               {/* Label - Use reward.title instead of reward.label */}
-              <p className={`font-bold ${canRedeem ? "text-foreground" : "text-muted-foreground"}`}>{reward.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{reward.description}</p>
+              <p
+                className={`font-bold ${canRedeem ? "text-foreground" : "text-muted-foreground"}`}
+              >
+                {reward.title}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {reward.description}
+              </p>
 
               {/* Cost indicator - Use reward.cost */}
               <div
                 className={`mt-3 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${
-                  canRedeem ? "bg-yellow-100 text-yellow-700" : "bg-muted text-muted-foreground"
+                  canRedeem
+                    ? "bg-yellow-100 text-yellow-700"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 <Star className="h-3 w-3 fill-current" />
@@ -130,13 +155,22 @@ export function RewardsShop({ stars, rewards, onRedeem }: RewardsShopProps) {
           <div className="animate-pop-in w-full max-w-sm rounded-3xl bg-card p-6 shadow-2xl">
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/20 to-orange-200">
-                <span className="text-5xl">{rewards.find((r) => r.id === selectedReward)?.emoji}</span>
+                <span className="text-5xl">
+                  {rewards.find((r) => r.id === selectedReward)?.emoji}
+                </span>
               </div>
-              <h3 className="text-xl font-bold text-foreground">Resgatar Recompensa?</h3>
-              <p className="mt-2 text-muted-foreground">{rewards.find((r) => r.id === selectedReward)?.title}</p>
+              <h3 className="text-xl font-bold text-foreground">
+                Resgatar Recompensa?
+              </h3>
+              <p className="mt-2 text-muted-foreground">
+                {rewards.find((r) => r.id === selectedReward)?.title}
+              </p>
               <div className="mt-3 flex items-center justify-center gap-1 text-amber-600">
                 <Star className="h-5 w-5 fill-current" />
-                <span className="font-bold">-{rewards.find((r) => r.id === selectedReward)?.cost ?? 10} estrelas</span>
+                <span className="font-bold">
+                  -{rewards.find((r) => r.id === selectedReward)?.cost ?? 10}{" "}
+                  estrelas
+                </span>
               </div>
             </div>
 

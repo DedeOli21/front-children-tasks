@@ -4,8 +4,20 @@ import { RewardsShop } from "@/components/rewards-shop"
 import type { Reward } from "@/lib/api"
 
 const REWARDS: Reward[] = [
-  { id: "r1", title: "Sobremesa especial", emoji: "🍰", cost: 5, description: "Escolha a sobremesa" },
-  { id: "r2", title: "Brinquedo", emoji: "🎁", cost: 50, description: "Um brinquedo pequeno" },
+  {
+    id: "r1",
+    title: "Sobremesa especial",
+    emoji: "🍰",
+    cost: 5,
+    description: "Escolha a sobremesa",
+  },
+  {
+    id: "r2",
+    title: "Brinquedo",
+    emoji: "🎁",
+    cost: 50,
+    description: "Um brinquedo pequeno",
+  },
 ]
 
 describe("RewardsShop (custo por recompensa)", () => {
@@ -46,5 +58,15 @@ describe("RewardsShop (custo por recompensa)", () => {
 
     expect(screen.getByText(/junte 5 estrelas/i)).toBeInTheDocument()
     expect(screen.getByText(/3 estrelas?/)).toBeInTheDocument()
+  })
+
+  it("mostra estado vazio sem pedir zero estrelas", () => {
+    render(<RewardsShop stars={0} rewards={[]} onRedeem={vi.fn()} />)
+
+    expect(screen.getByText(/loja vazia/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/nenhuma recompensa cadastrada/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/junte 0 estrelas/i)).not.toBeInTheDocument()
   })
 })

@@ -31,6 +31,7 @@ import { RewardsShop } from "@/components/rewards-shop"
 import { HistoryReport } from "@/components/admin/history-report"
 import {
   childrenApi,
+  activeTasksApi,
   tasksApi,
   penaltiesApi,
   rewardsApi,
@@ -41,6 +42,7 @@ import {
   mysteryBoxApi,
   type Child,
   type BehaviorReport,
+  type ActiveTask,
   type Task,
   type Penalty,
   type Reward,
@@ -51,14 +53,18 @@ import {
 import { queryKeys } from "@/lib/query-keys"
 import { useSelectedChild } from "@/contexts/selected-child-context"
 
-type ParentTab = "monitor" | "planner" | "botanic" | "reports" | "history" | "manage"
+type ParentTab =
+  "monitor" | "planner" | "botanic" | "reports" | "history" | "manage"
 
 interface ParentDashboardProps {
   parentName: string
   onLogout: () => void
 }
 
-export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) {
+export function ParentDashboard({
+  parentName,
+  onLogout,
+}: ParentDashboardProps) {
   const queryClient = useQueryClient()
   const { selectedChildId, setSelectedChildId } = useSelectedChild()
   const [activeTab, setActiveTab] = useState<ParentTab>("monitor")
@@ -96,16 +102,46 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     queryFn: rewardsApi.list,
   })
   const routinesQuery = useQuery({
-    queryKey: queryKeys.routines,
-    queryFn: () => routinesApi.list().catch(() => [] as RoutineItem[]),
+    queryKey: queryKeys.routines(selectedChildId),
+    queryFn: () =>
+      routinesApi
+        .list(selectedChildId ?? undefined)
+        .catch(() => [] as RoutineItem[]),
+    enabled: Boolean(selectedChildId),
   })
   const mysteryBoxQuery = useQuery({
     queryKey: queryKeys.mysteryBox,
-    queryFn: () => mysteryBoxApi.getConfig().catch(() => ({ cost: 5, prizes: [] as MysteryPrize[] })),
+    queryFn: () =>
+      mysteryBoxApi
+        .getConfig()
+        .catch(() => ({ cost: 5, prizes: [] as MysteryPrize[] })),
   })
   const childTasksQuery = useQuery({
     queryKey: queryKeys.tasks(selectedChildId),
-    queryFn: () => tasksApi.list(selectedChildId ?? undefined),
+    queryFn: async () => {
+      const [classicTasks, activeTasks] = await Promise.all([
+        tasksApi.list(selectedChildId ?? undefined),
+        activeTasksApi
+          .forDay(undefined, selectedChildId ?? undefined)
+          .catch(() => [] as ActiveTask[]),
+      ])
+
+      return [
+        ...classicTasks.map((task) => ({
+          ...task,
+          source: "classic" as const,
+        })),
+        ...activeTasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          emoji: task.emoji,
+          completed: task.status !== "pending",
+          status: task.status,
+          completedAt: task.completedAt ?? undefined,
+          source: "active" as const,
+        })),
+      ]
+    },
     enabled: Boolean(selectedChildId),
   })
   const reportsQuery = useQuery({
@@ -115,7 +151,8 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   })
   const therapistsQuery = useQuery({
     queryKey: queryKeys.therapists,
-    queryFn: () => therapistsApi.listForParent().catch(() => [] as TherapistLink[]),
+    queryFn: () =>
+      therapistsApi.listForParent().catch(() => [] as TherapistLink[]),
   })
 
   const loadChildren = useCallback(async () => {
@@ -132,7 +169,10 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   useEffect(() => {
     if (childrenQuery.data) {
       setChildren(childrenQuery.data)
-      if (!selectedChildId || !childrenQuery.data.some((c) => c.id === selectedChildId)) {
+      if (
+        !selectedChildId ||
+        !childrenQuery.data.some((c) => c.id === selectedChildId)
+      ) {
         setSelectedChildId(childrenQuery.data[0]?.id ?? null)
       }
     }
@@ -173,7 +213,11 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       rewardsQuery.isError ||
       routinesQuery.isError ||
       mysteryBoxQuery.isError
-    setError(failed ? "Não foi possível carregar os dados. Verifique sua conexão." : "")
+    setError(
+      failed
+        ? "Não foi possível carregar os dados. Verifique sua conexão."
+        : "",
+    )
   }, [
     childrenQuery.isError,
     mysteryBoxQuery.isError,
@@ -185,7 +229,8 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   const loadTherapists = useCallback(async () => {
     const data = await queryClient.fetchQuery({
       queryKey: queryKeys.therapists,
-      queryFn: () => therapistsApi.listForParent().catch(() => [] as TherapistLink[]),
+      queryFn: () =>
+        therapistsApi.listForParent().catch(() => [] as TherapistLink[]),
     })
     setTherapists(data)
   }, [queryClient])
@@ -199,20 +244,40 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
 
   // ============ AÇÕES SOBRE A CRIANÇA ============
   const updateChildStars = (childId: string, stars: number) => {
-    const update = (prev: Child[]) => prev.map((c) => (c.id === childId ? { ...c, currentStars: stars } : c))
+    const update = (prev: Child[]) =>
+      prev.map((c) => (c.id === childId ? { ...c, currentStars: stars } : c))
     setChildren(update)
-    queryClient.setQueryData<Child[]>(queryKeys.children, (prev) => update(prev ?? []))
+    queryClient.setQueryData<Child[]>(queryKeys.children, (prev) =>
+      update(prev ?? []),
+    )
   }
 
   const handleToggleTask = async (task: Task) => {
     if (!selectedChildId) return
     try {
       const result = task.completed
-        ? await tasksApi.uncomplete(task.id, selectedChildId)
-        : await tasksApi.complete(task.id, selectedChildId)
-      setChildTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, completed: !task.completed } : t)))
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
-      if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
+        ? task.source === "active"
+          ? await activeTasksApi.uncomplete(task.id)
+          : await tasksApi.uncomplete(task.id, selectedChildId)
+        : task.source === "active"
+          ? await activeTasksApi.complete(task.id)
+          : await tasksApi.complete(task.id, selectedChildId)
+      setChildTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id
+            ? {
+                ...t,
+                completed: !task.completed,
+                status: task.completed ? "pending" : "completed",
+              }
+            : t,
+        ),
+      )
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(selectedChildId),
+      })
+      if ("currentStars" in result && result.currentStars !== undefined)
+        updateChildStars(selectedChildId, result.currentStars)
     } catch (err) {
       console.error("Erro ao alternar tarefa:", err)
       toast.error("Erro ao alternar tarefa. Tente novamente.")
@@ -223,8 +288,27 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     if (!selectedChildId) return
     try {
       await tasksApi.resetDay(selectedChildId)
-      setChildTasks((prev) => prev.map((t) => ({ ...t, completed: false })))
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
+      await Promise.all(
+        childTasks
+          .filter(
+            (task) => task.source === "active" && task.status === "completed",
+          )
+          .map((task) => activeTasksApi.uncomplete(task.id)),
+      )
+      setChildTasks((prev) =>
+        prev.map((t) =>
+          t.status === "approved"
+            ? t
+            : {
+                ...t,
+                completed: false,
+                status: "pending",
+              },
+        ),
+      )
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(selectedChildId),
+      })
     } catch (err) {
       console.error("Erro ao resetar dia:", err)
       toast.error("Erro ao resetar dia. Tente novamente.")
@@ -235,8 +319,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     if (!selectedChildId) return
     try {
       const result = await penaltiesApi.apply(penaltyId, selectedChildId)
-      if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
-      queryClient.invalidateQueries({ queryKey: queryKeys.streak(selectedChildId) })
+      if (result.currentStars !== undefined)
+        updateChildStars(selectedChildId, result.currentStars)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.streak(selectedChildId),
+      })
+      toast.success(result.message ?? "Penalidade registrada")
     } catch (err) {
       console.error("Erro ao aplicar penalidade:", err)
       toast.error("Erro ao aplicar penalidade. Tente novamente.")
@@ -249,8 +337,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     if (!reward || selectedChild.currentStars < reward.cost) return
     try {
       const result = await rewardsApi.redeem(rewardId, selectedChildId)
-      if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
-      queryClient.invalidateQueries({ queryKey: queryKeys.streak(selectedChildId) })
+      if (result.currentStars !== undefined)
+        updateChildStars(selectedChildId, result.currentStars)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.streak(selectedChildId),
+      })
+      toast.success(result.message ?? "Recompensa resgatada")
     } catch (err) {
       console.error("Erro ao resgatar recompensa:", err)
       toast.error("Erro ao resgatar recompensa. Tente novamente.")
@@ -263,9 +355,16 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       const result =
         delta > 0
           ? await starsApi.add(selectedChildId, delta, "Ajuste do responsável")
-          : await starsApi.subtract(selectedChildId, -delta, "Ajuste do responsável")
-      if (result.currentStars !== undefined) updateChildStars(selectedChildId, result.currentStars)
-      queryClient.invalidateQueries({ queryKey: queryKeys.stars(selectedChildId) })
+          : await starsApi.subtract(
+              selectedChildId,
+              -delta,
+              "Ajuste do responsável",
+            )
+      if (result.currentStars !== undefined)
+        updateChildStars(selectedChildId, result.currentStars)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.stars(selectedChildId),
+      })
     } catch (err) {
       console.error("Erro ao ajustar estrelas:", err)
       toast.error("Erro ao ajustar estrelas. Tente novamente.")
@@ -284,20 +383,33 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const result = await streaksApi.grantFreezes(selectedChildId, 1)
       toast.success(result.message)
-      queryClient.invalidateQueries({ queryKey: queryKeys.streak(selectedChildId) })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.streak(selectedChildId),
+      })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível conceder o congelamento")
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível conceder o congelamento",
+      )
     }
   }
 
-  const handleUnlinkTherapist = async (therapistId: string, childId: string) => {
+  const handleUnlinkTherapist = async (
+    therapistId: string,
+    childId: string,
+  ) => {
     try {
       await therapistsApi.unlink(therapistId, childId)
       toast.success("Acesso da terapeuta removido")
       loadTherapists()
       queryClient.invalidateQueries({ queryKey: queryKeys.therapists })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível remover o acesso")
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível remover o acesso",
+      )
     }
   }
 
@@ -306,7 +418,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await tasksApi.create(taskData)
       setChildTasks((prev) => [...prev, created])
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(selectedChildId),
+      })
     } catch (err) {
       console.error("Erro ao criar tarefa:", err)
       toast.error("Erro ao criar tarefa. Tente novamente.")
@@ -316,8 +430,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   const handleTaskUpdate = async (id: string, taskData: Partial<Task>) => {
     try {
       await tasksApi.update(id, taskData)
-      setChildTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...taskData } : t)))
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
+      setChildTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...taskData } : t)),
+      )
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(selectedChildId),
+      })
     } catch (err) {
       console.error("Erro ao atualizar tarefa:", err)
       toast.error("Erro ao atualizar tarefa. Tente novamente.")
@@ -328,7 +446,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await tasksApi.delete(id)
       setChildTasks((prev) => prev.filter((t) => t.id !== id))
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(selectedChildId) })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks(selectedChildId),
+      })
     } catch (err) {
       console.error("Erro ao deletar tarefa:", err)
       toast.error("Erro ao deletar tarefa. Tente novamente.")
@@ -339,6 +459,10 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await penaltiesApi.create(penaltyData)
       setPenalties((prev) => [...prev, created])
+      queryClient.setQueryData<Penalty[]>(queryKeys.penalties, (prev = []) => [
+        ...prev,
+        created,
+      ])
       queryClient.invalidateQueries({ queryKey: queryKeys.penalties })
     } catch (err) {
       console.error("Erro ao criar penalidade:", err)
@@ -346,10 +470,18 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     }
   }
 
-  const handlePenaltyUpdate = async (id: string, penaltyData: Partial<Penalty>) => {
+  const handlePenaltyUpdate = async (
+    id: string,
+    penaltyData: Partial<Penalty>,
+  ) => {
     try {
       await penaltiesApi.update(id, penaltyData)
-      setPenalties((prev) => prev.map((p) => (p.id === id ? { ...p, ...penaltyData } : p)))
+      setPenalties((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ...penaltyData } : p)),
+      )
+      queryClient.setQueryData<Penalty[]>(queryKeys.penalties, (prev = []) =>
+        prev.map((p) => (p.id === id ? { ...p, ...penaltyData } : p)),
+      )
       queryClient.invalidateQueries({ queryKey: queryKeys.penalties })
     } catch (err) {
       console.error("Erro ao atualizar penalidade:", err)
@@ -361,6 +493,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await penaltiesApi.delete(id)
       setPenalties((prev) => prev.filter((p) => p.id !== id))
+      queryClient.setQueryData<Penalty[]>(queryKeys.penalties, (prev = []) =>
+        prev.filter((p) => p.id !== id),
+      )
       queryClient.invalidateQueries({ queryKey: queryKeys.penalties })
     } catch (err) {
       console.error("Erro ao deletar penalidade:", err)
@@ -372,21 +507,35 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       const created = await rewardsApi.create(rewardData)
       setRewards((prev) => [...prev, created])
+      queryClient.setQueryData<Reward[]>(queryKeys.rewards, (prev = []) => [
+        ...prev,
+        created,
+      ])
       queryClient.invalidateQueries({ queryKey: queryKeys.rewards })
     } catch (err) {
       console.error("Erro ao criar recompensa:", err)
       toast.error("Erro ao criar recompensa. Tente novamente.")
+      throw err
     }
   }
 
-  const handleRewardUpdate = async (id: string, rewardData: Partial<Reward>) => {
+  const handleRewardUpdate = async (
+    id: string,
+    rewardData: Partial<Reward>,
+  ) => {
     try {
       await rewardsApi.update(id, rewardData)
-      setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, ...rewardData } : r)))
+      setRewards((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, ...rewardData } : r)),
+      )
+      queryClient.setQueryData<Reward[]>(queryKeys.rewards, (prev = []) =>
+        prev.map((r) => (r.id === id ? { ...r, ...rewardData } : r)),
+      )
       queryClient.invalidateQueries({ queryKey: queryKeys.rewards })
     } catch (err) {
       console.error("Erro ao atualizar recompensa:", err)
       toast.error("Erro ao atualizar recompensa. Tente novamente.")
+      throw err
     }
   }
 
@@ -394,6 +543,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await rewardsApi.delete(id)
       setRewards((prev) => prev.filter((r) => r.id !== id))
+      queryClient.setQueryData<Reward[]>(queryKeys.rewards, (prev = []) =>
+        prev.filter((r) => r.id !== id),
+      )
       queryClient.invalidateQueries({ queryKey: queryKeys.rewards })
     } catch (err) {
       console.error("Erro ao deletar recompensa:", err)
@@ -404,21 +556,40 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
   const handleRoutineCreate = async (routineData: Omit<RoutineItem, "id">) => {
     try {
       const created = await routinesApi.create(routineData)
-      setRoutines((prev) => [...prev, created].sort((a, b) => a.time.localeCompare(b.time)))
-      queryClient.invalidateQueries({ queryKey: queryKeys.routines })
+      setRoutines((prev) =>
+        [...prev, created].sort((a, b) => a.time.localeCompare(b.time)),
+      )
+      queryClient.setQueryData<RoutineItem[]>(
+        queryKeys.routines(selectedChildId),
+        (prev = []) =>
+          [...prev, created].sort((a, b) => a.time.localeCompare(b.time)),
+      )
+      queryClient.invalidateQueries({ queryKey: ["routines"] })
     } catch (err) {
       console.error("Erro ao criar rotina:", err)
       toast.error("Erro ao criar rotina. Tente novamente.")
     }
   }
 
-  const handleRoutineUpdate = async (id: string, routineData: Partial<RoutineItem>) => {
+  const handleRoutineUpdate = async (
+    id: string,
+    routineData: Partial<RoutineItem>,
+  ) => {
     try {
       await routinesApi.update(id, routineData)
       setRoutines((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...routineData } : r)).sort((a, b) => a.time.localeCompare(b.time)),
+        prev
+          .map((r) => (r.id === id ? { ...r, ...routineData } : r))
+          .sort((a, b) => a.time.localeCompare(b.time)),
       )
-      queryClient.invalidateQueries({ queryKey: queryKeys.routines })
+      queryClient.setQueryData<RoutineItem[]>(
+        queryKeys.routines(selectedChildId),
+        (prev = []) =>
+          prev
+            .map((r) => (r.id === id ? { ...r, ...routineData } : r))
+            .sort((a, b) => a.time.localeCompare(b.time)),
+      )
+      queryClient.invalidateQueries({ queryKey: ["routines"] })
     } catch (err) {
       console.error("Erro ao atualizar rotina:", err)
       toast.error("Erro ao atualizar rotina. Tente novamente.")
@@ -429,14 +600,20 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     try {
       await routinesApi.delete(id)
       setRoutines((prev) => prev.filter((r) => r.id !== id))
-      queryClient.invalidateQueries({ queryKey: queryKeys.routines })
+      queryClient.setQueryData<RoutineItem[]>(
+        queryKeys.routines(selectedChildId),
+        (prev = []) => prev.filter((r) => r.id !== id),
+      )
+      queryClient.invalidateQueries({ queryKey: ["routines"] })
     } catch (err) {
       console.error("Erro ao deletar rotina:", err)
       toast.error("Erro ao deletar rotina. Tente novamente.")
     }
   }
 
-  const handleMysteryPrizeCreate = async (prizeData: Omit<MysteryPrize, "id">) => {
+  const handleMysteryPrizeCreate = async (
+    prizeData: Omit<MysteryPrize, "id">,
+  ) => {
     try {
       const created = await mysteryBoxApi.createPrize(prizeData)
       setMysteryPrizes((prev) => [...prev, created])
@@ -447,10 +624,15 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
     }
   }
 
-  const handleMysteryPrizeUpdate = async (id: string, prizeData: Partial<MysteryPrize>) => {
+  const handleMysteryPrizeUpdate = async (
+    id: string,
+    prizeData: Partial<MysteryPrize>,
+  ) => {
     try {
       await mysteryBoxApi.updatePrize(id, prizeData)
-      setMysteryPrizes((prev) => prev.map((p) => (p.id === id ? { ...p, ...prizeData } : p)))
+      setMysteryPrizes((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ...prizeData } : p)),
+      )
       queryClient.invalidateQueries({ queryKey: queryKeys.mysteryBox })
     } catch (err) {
       console.error("Erro ao atualizar prêmio:", err)
@@ -475,7 +657,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-12 w-12 animate-spin text-slate-500" />
-          <p className="text-lg font-semibold text-slate-500">Carregando painel...</p>
+          <p className="text-lg font-semibold text-slate-500">
+            Carregando painel...
+          </p>
         </div>
       </main>
     )
@@ -545,7 +729,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       <header className="sticky top-0 z-40 bg-gradient-to-r from-slate-700 to-slate-600 px-4 py-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-black text-white drop-shadow-md">Painel da Família</h1>
+            <h1 className="text-lg font-black text-white drop-shadow-md">
+              Painel da Família
+            </h1>
             <p className="text-xs text-white/70">Olá, {parentName}</p>
           </div>
           <NotificationBell />
@@ -572,7 +758,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
                   : "border-transparent bg-white hover:border-emerald-200"
               }`}
             >
-              <span className="text-sm font-black text-slate-700">{child.name}</span>
+              <span className="text-sm font-black text-slate-700">
+                {child.name}
+              </span>
               <span className="mt-1 flex items-center gap-1 text-xs font-bold text-amber-600">
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                 {child.currentStars} estrelas
@@ -609,7 +797,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
             key={id}
             onClick={() => setActiveTab(id)}
             className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 font-bold transition-all duration-300 ${
-              activeTab === id ? "bg-slate-700 text-white shadow-md" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              activeTab === id
+                ? "bg-slate-700 text-white shadow-md"
+                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
             }`}
           >
             <Icon className="h-4 w-4" />
@@ -621,9 +811,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
       <div className="space-y-6 px-4 py-6">
         {children.length === 0 ? (
           <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
-            <p className="text-lg font-bold text-slate-700">Nenhuma criança cadastrada ainda</p>
+            <p className="text-lg font-bold text-slate-700">
+              Nenhuma criança cadastrada ainda
+            </p>
             <p className="mt-1 text-sm text-slate-500">
-              Cadastre a primeira criança para começar a usar o quadro de recompensas.
+              Cadastre a primeira criança para começar a usar o quadro de
+              recompensas.
             </p>
             <button
               onClick={() => setShowAddChild(true)}
@@ -638,7 +831,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
             {/* Código de convite + ajustes rápidos */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl bg-white p-4 shadow-lg">
-                <p className="text-xs font-bold uppercase text-slate-400">Código para o professor</p>
+                <p className="text-xs font-bold uppercase text-slate-400">
+                  Código para o professor
+                </p>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="rounded-xl bg-indigo-50 px-4 py-2 font-mono text-xl font-black tracking-widest text-indigo-600">
                     {selectedChild.inviteCode}
@@ -647,17 +842,24 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
                     onClick={handleCopyCode}
                     className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200"
                   >
-                    {copiedCode ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                    {copiedCode ? (
+                      <Check className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                     {copiedCode ? "Copiado!" : "Copiar"}
                   </button>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  O professor usa esse código para vincular {selectedChild.name} e enviar relatórios.
+                  O professor usa esse código para vincular {selectedChild.name}{" "}
+                  e enviar relatórios.
                 </p>
               </div>
 
               <div className="rounded-2xl bg-white p-4 shadow-lg">
-                <p className="text-xs font-bold uppercase text-slate-400">Ajuste rápido de estrelas</p>
+                <p className="text-xs font-bold uppercase text-slate-400">
+                  Ajuste rápido de estrelas
+                </p>
                 <div className="mt-2 flex items-center gap-3">
                   <button
                     onClick={() => handleAdjustStars(-1)}
@@ -689,7 +891,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
               {/* Terapeuta da criança */}
               <div className="rounded-2xl bg-white p-4 shadow-lg sm:col-span-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase text-slate-400">Terapeuta (acesso opcional)</p>
+                  <p className="text-xs font-bold uppercase text-slate-400">
+                    Terapeuta (acesso opcional)
+                  </p>
                   <button
                     onClick={() => setShowAddTherapist(true)}
                     className="flex items-center gap-1 rounded-lg bg-purple-100 px-2 py-1 text-xs font-bold text-purple-700 hover:bg-purple-200"
@@ -698,10 +902,12 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
                     Vincular
                   </button>
                 </div>
-                {therapists.filter((t) => t.childId === selectedChild.id).length === 0 ? (
+                {therapists.filter((t) => t.childId === selectedChild.id)
+                  .length === 0 ? (
                   <p className="mt-2 text-sm text-slate-400">
-                    Nenhuma terapeuta vinculada a {selectedChild.name}. Ela poderá sugerir estrelas
-                    (com sua aprovação), registrar notas e falar com o professor.
+                    Nenhuma terapeuta vinculada a {selectedChild.name}. Ela
+                    poderá sugerir estrelas (com sua aprovação), registrar notas
+                    e falar com o professor.
                   </p>
                 ) : (
                   <div className="mt-2 space-y-2">
@@ -714,11 +920,20 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
                         >
                           <span className="text-xl">💜</span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-slate-700">{link.name}</p>
-                            <p className="truncate text-xs text-slate-400">{link.email}</p>
+                            <p className="truncate text-sm font-bold text-slate-700">
+                              {link.name}
+                            </p>
+                            <p className="truncate text-xs text-slate-400">
+                              {link.email}
+                            </p>
                           </div>
                           <button
-                            onClick={() => handleUnlinkTherapist(link.therapistId, link.childId)}
+                            onClick={() =>
+                              handleUnlinkTherapist(
+                                link.therapistId,
+                                link.childId,
+                              )
+                            }
                             className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-bold text-red-500 hover:bg-red-50"
                           >
                             Remover acesso
@@ -734,7 +949,9 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
             <div className="rounded-2xl bg-white p-4 shadow-lg">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-black text-slate-700">
-                  Tarefas de hoje ({childTasks.filter((t) => t.completed).length}/{childTasks.length})
+                  Combinados de hoje (
+                  {childTasks.filter((t) => t.completed).length}/
+                  {childTasks.length})
                 </h2>
                 <button
                   onClick={handleResetDay}
@@ -761,24 +978,38 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
                     >
                       {task.title}
                     </span>
-                    {task.completed && <Check className="h-5 w-5 text-emerald-500" strokeWidth={3} />}
+                    {task.completed && (
+                      <Check
+                        className="h-5 w-5 text-emerald-500"
+                        strokeWidth={3}
+                      />
+                    )}
                   </button>
                 ))}
                 {childTasks.length === 0 && (
                   <p className="py-4 text-center text-sm text-slate-400">
-                    Nenhuma tarefa cadastrada. Use a aba Gerenciar para criar.
+                    Nenhum combinado para hoje. Use a aba Gerenciar para criar.
                   </p>
                 )}
               </div>
             </div>
 
             {/* Aplicar penalidade */}
-            <PenaltyList penalties={penalties} onPenalty={(penaltyId) => handleApplyPenalty(penaltyId)} />
+            <PenaltyList
+              penalties={penalties}
+              onPenalty={(penaltyId) => handleApplyPenalty(penaltyId)}
+            />
 
             {/* Resgatar recompensa em nome da criança */}
             <div className="rounded-2xl bg-white p-4 shadow-lg">
-              <h2 className="mb-3 font-black text-slate-700">Resgatar recompensa para {selectedChild.name}</h2>
-              <RewardsShop stars={selectedChild.currentStars} rewards={rewards} onRedeem={handleRedeemReward} />
+              <h2 className="mb-3 font-black text-slate-700">
+                Resgatar recompensa para {selectedChild.name}
+              </h2>
+              <RewardsShop
+                stars={selectedChild.currentStars}
+                rewards={rewards}
+                onRedeem={handleRedeemReward}
+              />
             </div>
           </>
         ) : activeTab === "planner" ? (
@@ -796,47 +1027,73 @@ export function ParentDashboard({ parentName, onLogout }: ParentDashboardProps) 
                 <GraduationCap className="h-6 w-6 text-indigo-500" />
               </div>
               <div className="flex-1">
-                <p className="text-lg font-bold text-indigo-700">Relatórios da escola</p>
-                <p className="text-sm text-indigo-600/80">Registros diários enviados pelo professor</p>
+                <p className="text-lg font-bold text-indigo-700">
+                  Relatórios da escola
+                </p>
+                <p className="text-sm text-indigo-600/80">
+                  Registros diários enviados pelo professor
+                </p>
               </div>
-              <ReportExport childId={selectedChild.id} childName={selectedChild.name} />
+              <ReportExport
+                childId={selectedChild.id}
+                childName={selectedChild.name}
+              />
             </div>
 
             {reports.length === 0 ? (
               <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
-                <p className="font-bold text-slate-600">Nenhum relatório ainda</p>
+                <p className="font-bold text-slate-600">
+                  Nenhum relatório ainda
+                </p>
                 <p className="mt-1 text-sm text-slate-400">
-                  Compartilhe o código <strong>{selectedChild.inviteCode}</strong> com o professor para começar.
+                  Compartilhe o código{" "}
+                  <strong>{selectedChild.inviteCode}</strong> com o professor
+                  para começar.
                 </p>
               </div>
             ) : (
               reports.map((report) => (
-                <div key={report.id} className="rounded-2xl bg-white p-4 shadow-lg">
+                <div
+                  key={report.id}
+                  className="rounded-2xl bg-white p-4 shadow-lg"
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-black text-slate-700">
-                        {new Date(`${report.date}T12:00:00`).toLocaleDateString("pt-BR", {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "2-digit",
-                        })}
+                        {new Date(`${report.date}T12:00:00`).toLocaleDateString(
+                          "pt-BR",
+                          {
+                            weekday: "long",
+                            day: "2-digit",
+                            month: "2-digit",
+                          },
+                        )}
                       </p>
-                      <p className="text-xs text-slate-400">{report.teacherName}</p>
+                      <p className="text-xs text-slate-400">
+                        {report.teacherName}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       {report.rating != null && (
-                        <span className="text-lg" title={`Avaliação: ${report.rating}/5`}>
-                          {["😣", "😕", "🙂", "😄", "🤩"][report.rating - 1] ?? "🙂"}
+                        <span
+                          className="text-lg"
+                          title={`Avaliação: ${report.rating}/5`}
+                        >
+                          {["😣", "😕", "🙂", "😄", "🤩"][report.rating - 1] ??
+                            "🙂"}
                         </span>
                       )}
                       {report.starsAwarded > 0 && (
                         <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
-                          +{report.starsAwarded} <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                          +{report.starsAwarded}{" "}
+                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                         </span>
                       )}
                     </div>
                   </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{report.text}</p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">
+                    {report.text}
+                  </p>
                 </div>
               ))
             )}
@@ -880,7 +1137,11 @@ interface AddTherapistModalProps {
   onLinked: () => void
 }
 
-function AddTherapistModal({ child, onClose, onLinked }: AddTherapistModalProps) {
+function AddTherapistModal({
+  child,
+  onClose,
+  onLinked,
+}: AddTherapistModalProps) {
   const [email, setEmail] = useState("")
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
@@ -901,7 +1162,9 @@ function AddTherapistModal({ child, onClose, onLinked }: AddTherapistModalProps)
       toast.success(result.message ?? "Terapeuta vinculada!")
       onLinked()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao vincular terapeuta")
+      setError(
+        err instanceof Error ? err.message : "Erro ao vincular terapeuta",
+      )
     } finally {
       setIsSaving(false)
     }
@@ -911,14 +1174,21 @@ function AddTherapistModal({ child, onClose, onLinked }: AddTherapistModalProps)
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-black text-slate-700">Terapeuta de {child.name}</h2>
-          <button onClick={onClose} className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200">
+          <h2 className="text-lg font-black text-slate-700">
+            Terapeuta de {child.name}
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl bg-red-100 p-3 text-center text-sm font-semibold text-red-600">{error}</div>
+          <div className="mb-4 rounded-xl bg-red-100 p-3 text-center text-sm font-semibold text-red-600">
+            {error}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -950,13 +1220,18 @@ function AddTherapistModal({ child, onClose, onLinked }: AddTherapistModalProps)
             disabled={isSaving}
             className="flex items-center justify-center gap-2 rounded-xl bg-purple-500 py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-50"
           >
-            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+            {isSaving ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Plus className="h-5 w-5" />
+            )}
             Vincular terapeuta
           </button>
         </form>
 
         <p className="mt-3 text-center text-xs text-slate-400">
-          Se a terapeuta já tem conta no app, basta o email — o vínculo é criado sem mudar a senha dela.
+          Se a terapeuta já tem conta no app, basta o email — o vínculo é criado
+          sem mudar a senha dela.
         </p>
       </div>
     </div>
@@ -995,13 +1270,18 @@ function AddChildModal({ onClose, onCreated }: AddChildModalProps) {
       <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-black text-slate-700">Nova criança</h2>
-          <button onClick={onClose} className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200">
+          <button
+            onClick={onClose}
+            className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl bg-red-100 p-3 text-center text-sm font-semibold text-red-600">{error}</div>
+          <div className="mb-4 rounded-xl bg-red-100 p-3 text-center text-sm font-semibold text-red-600">
+            {error}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -1037,13 +1317,18 @@ function AddChildModal({ onClose, onCreated }: AddChildModalProps) {
             disabled={isSaving}
             className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-50"
           >
-            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+            {isSaving ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Plus className="h-5 w-5" />
+            )}
             Cadastrar
           </button>
         </form>
 
         <p className="mt-3 text-center text-xs text-slate-400">
-          A criança entra no app com esse usuário e senha, sem precisar de email.
+          A criança entra no app com esse usuário e senha, sem precisar de
+          email.
         </p>
       </div>
     </div>

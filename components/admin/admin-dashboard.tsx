@@ -1,8 +1,27 @@
 "use client"
 
 import { useState } from "react"
-import { Star, Gift, AlertTriangle, Clock, Plus, Pencil, Trash2, X, Check, ArrowLeft, BarChart3, Package } from "lucide-react"
-import type { Task, Penalty, Reward, RoutineItem, MysteryPrize } from "@/lib/api"
+import {
+  Star,
+  Gift,
+  AlertTriangle,
+  Clock,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Check,
+  ArrowLeft,
+  BarChart3,
+  Package,
+} from "lucide-react"
+import type {
+  Task,
+  Penalty,
+  Reward,
+  RoutineItem,
+  MysteryPrize,
+} from "@/lib/api"
 import { HistoryReport } from "./history-report"
 import { MysteryPrizesAdmin } from "./mystery-prizes-admin"
 
@@ -18,8 +37,8 @@ interface AdminDashboardProps {
   onPenaltyCreate: (penalty: Omit<Penalty, "id">) => void
   onPenaltyUpdate: (id: string, penalty: Partial<Penalty>) => void
   onPenaltyDelete: (id: string) => void
-  onRewardCreate: (reward: Omit<Reward, "id">) => void
-  onRewardUpdate: (id: string, reward: Partial<Reward>) => void
+  onRewardCreate: (reward: Omit<Reward, "id">) => void | Promise<void>
+  onRewardUpdate: (id: string, reward: Partial<Reward>) => void | Promise<void>
   onRewardDelete: (id: string) => void
   onRoutineCreate: (routine: Omit<RoutineItem, "id">) => void
   onRoutineUpdate: (id: string, routine: Partial<RoutineItem>) => void
@@ -32,7 +51,8 @@ interface AdminDashboardProps {
   historyChildId?: string
 }
 
-type AdminTab = "tasks" | "penalties" | "rewards" | "routines" | "history" | "mystery"
+type AdminTab =
+  "tasks" | "penalties" | "rewards" | "routines" | "history" | "mystery"
 
 export function AdminDashboard({
   tasks,
@@ -72,8 +92,12 @@ export function AdminDashboard({
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-lg font-black text-white drop-shadow-md">Painel de Administracao</h1>
-            <p className="text-xs text-white/70">Gerencie tarefas, recompensas e penalidades</p>
+            <h1 className="text-lg font-black text-white drop-shadow-md">
+              Painel de Administracao
+            </h1>
+            <p className="text-xs text-white/70">
+              Gerencie tarefas, recompensas e penalidades
+            </p>
           </div>
         </div>
       </header>
@@ -151,7 +175,12 @@ export function AdminDashboard({
       {/* Content */}
       <div className="px-4 py-6">
         {activeTab === "tasks" && (
-          <TasksAdmin tasks={tasks} onCreate={onTaskCreate} onUpdate={onTaskUpdate} onDelete={onTaskDelete} />
+          <TasksAdmin
+            tasks={tasks}
+            onCreate={onTaskCreate}
+            onUpdate={onTaskUpdate}
+            onDelete={onTaskDelete}
+          />
         )}
         {activeTab === "routines" && (
           <RoutinesAdmin
@@ -237,7 +266,9 @@ export function TasksAdmin({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-800">Tarefas / Combinados</h2>
+        <h2 className="text-xl font-bold text-slate-800">
+          Tarefas / Combinados
+        </h2>
         <button
           onClick={() => {
             setIsAdding(true)
@@ -255,21 +286,29 @@ export function TasksAdmin({
         <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4">
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">Emoji</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
+                Emoji
+              </label>
               <input
                 type="text"
                 value={formData.emoji}
-                onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, emoji: e.target.value })
+                }
                 placeholder="Ex: 📚"
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-2xl focus:border-emerald-400 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">Titulo</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
+                Titulo
+              </label>
               <input
                 type="text"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
                 placeholder="Ex: Fazer o dever sem brigar"
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-emerald-400 focus:outline-none"
               />
@@ -356,7 +395,11 @@ export function PenaltiesAdmin({
 
   const startEdit = (penalty: Penalty) => {
     setEditingId(penalty.id)
-    setFormData({ title: penalty.title, emoji: penalty.emoji, amount: penalty.amount })
+    setFormData({
+      title: penalty.title,
+      emoji: penalty.emoji,
+      amount: penalty.amount,
+    })
     setIsAdding(false)
   }
 
@@ -387,33 +430,48 @@ export function PenaltiesAdmin({
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">Emoji</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                  Emoji
+                </label>
                 <input
                   type="text"
                   value={formData.emoji}
-                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, emoji: e.target.value })
+                  }
                   placeholder="Ex: 😤"
                   className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-2xl focus:border-red-400 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">Estrelas perdidas</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                  Estrelas perdidas
+                </label>
                 <input
                   type="number"
                   min="1"
                   max="10"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: Number.parseInt(e.target.value) || 1 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      amount: Number.parseInt(e.target.value) || 1,
+                    })
+                  }
                   className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 focus:border-red-400 focus:outline-none"
                 />
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">Titulo</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
+                Titulo
+              </label>
               <input
                 type="text"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
                 placeholder="Ex: Brigou ou bateu"
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-red-400 focus:outline-none"
               />
@@ -446,7 +504,9 @@ export function PenaltiesAdmin({
             <div className="flex items-center gap-3">
               <span className="text-2xl">{penalty.emoji}</span>
               <div>
-                <span className="font-semibold text-slate-700">{penalty.title}</span>
+                <span className="font-semibold text-slate-700">
+                  {penalty.title}
+                </span>
                 <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
                   -{penalty.amount} estrela{penalty.amount > 1 ? "s" : ""}
                 </span>
@@ -481,12 +541,13 @@ export function RewardsAdmin({
   onDelete,
 }: {
   rewards: Reward[]
-  onCreate: (reward: Omit<Reward, "id">) => void
-  onUpdate: (id: string, reward: Partial<Reward>) => void
+  onCreate: (reward: Omit<Reward, "id">) => void | Promise<void>
+  onUpdate: (id: string, reward: Partial<Reward>) => void | Promise<void>
   onDelete: (id: string) => void
 }) {
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     emoji: "",
@@ -495,17 +556,28 @@ export function RewardsAdmin({
     kind: "privilege" as Reward["kind"],
   })
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.emoji.trim()) return
 
-    if (editingId) {
-      onUpdate(editingId, formData)
-      setEditingId(null)
-    } else {
-      onCreate(formData)
-      setIsAdding(false)
+    setIsSaving(true)
+    try {
+      if (editingId) {
+        await onUpdate(editingId, formData)
+        setEditingId(null)
+      } else {
+        await onCreate(formData)
+        setIsAdding(false)
+      }
+      setFormData({
+        title: "",
+        emoji: "",
+        description: "",
+        cost: 10,
+        kind: "privilege",
+      })
+    } finally {
+      setIsSaving(false)
     }
-    setFormData({ title: "", emoji: "", description: "", cost: 10, kind: "privilege" })
   }
 
   const startEdit = (reward: Reward) => {
@@ -523,13 +595,21 @@ export function RewardsAdmin({
   const cancelEdit = () => {
     setEditingId(null)
     setIsAdding(false)
-    setFormData({ title: "", emoji: "", description: "", cost: 10, kind: "privilege" })
+    setFormData({
+      title: "",
+      emoji: "",
+      description: "",
+      cost: 10,
+      kind: "privilege",
+    })
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-800">Loja de Recompensas</h2>
+        <h2 className="text-xl font-bold text-slate-800">
+          Loja de Recompensas
+        </h2>
         <button
           onClick={() => {
             setIsAdding(true)
@@ -547,51 +627,77 @@ export function RewardsAdmin({
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">Emoji</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                  Emoji
+                </label>
                 <input
                   type="text"
                   value={formData.emoji}
-                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, emoji: e.target.value })
+                  }
                   placeholder="Ex: 🎬"
                   className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-2xl focus:border-amber-400 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">Custo (estrelas)</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                  Custo (estrelas)
+                </label>
                 <input
                   type="number"
                   min="1"
                   value={formData.cost}
-                  onChange={(e) => setFormData({ ...formData, cost: Number.parseInt(e.target.value) || 10 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      cost: Number.parseInt(e.target.value) || 10,
+                    })
+                  }
                   className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 focus:border-amber-400 focus:outline-none"
                 />
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">Titulo</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
+                Titulo
+              </label>
               <input
                 type="text"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
                 placeholder="Ex: Escolher o filme"
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-amber-400 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">Descricao</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
+                Descricao
+              </label>
               <input
                 type="text"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 placeholder="Ex: Escolha o filme da familia!"
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-amber-400 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">Tipo</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
+                Tipo
+              </label>
               <select
                 value={formData.kind}
-                onChange={(e) => setFormData({ ...formData, kind: e.target.value as Reward["kind"] })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    kind: e.target.value as Reward["kind"],
+                  })
+                }
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 font-semibold focus:border-amber-400 focus:outline-none"
               >
                 <option value="privilege">Privilégio</option>
@@ -601,10 +707,11 @@ export function RewardsAdmin({
             <div className="flex gap-2">
               <button
                 onClick={handleSubmit}
+                disabled={isSaving}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-500 py-3 font-bold text-white transition-all hover:bg-amber-600"
               >
                 <Check className="h-4 w-4" />
-                {editingId ? "Salvar" : "Adicionar"}
+                {isSaving ? "Salvando..." : editingId ? "Salvar" : "Adicionar"}
               </button>
               <button
                 onClick={cancelEdit}
@@ -626,7 +733,9 @@ export function RewardsAdmin({
             <div className="flex items-center gap-3">
               <span className="text-2xl">{reward.emoji}</span>
               <div>
-                <span className="font-semibold text-slate-700">{reward.title}</span>
+                <span className="font-semibold text-slate-700">
+                  {reward.title}
+                </span>
                 <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-600">
                   {reward.cost} estrelas
                 </span>
@@ -635,7 +744,9 @@ export function RewardsAdmin({
                     Protege streak
                   </span>
                 )}
-                {reward.description && <p className="text-xs text-slate-500">{reward.description}</p>}
+                {reward.description && (
+                  <p className="text-xs text-slate-500">{reward.description}</p>
+                )}
               </div>
             </div>
             <div className="flex gap-2">
@@ -681,7 +792,12 @@ export function RoutinesAdmin({
   })
 
   const handleSubmit = () => {
-    if (!formData.title.trim() || !formData.emoji.trim() || !formData.time.trim()) return
+    if (
+      !formData.title.trim() ||
+      !formData.emoji.trim() ||
+      !formData.time.trim()
+    )
+      return
 
     if (editingId) {
       onUpdate(editingId, formData)
@@ -734,29 +850,44 @@ export function RoutinesAdmin({
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">Horario</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                  Horario
+                </label>
                 <input
                   type="time"
                   value={formData.time}
-                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, time: e.target.value })
+                  }
                   className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 focus:border-indigo-400 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">Emoji</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                  Emoji
+                </label>
                 <input
                   type="text"
                   value={formData.emoji}
-                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, emoji: e.target.value })
+                  }
                   placeholder="Ex: 🌅"
                   className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-2xl focus:border-indigo-400 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">Periodo</label>
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                  Periodo
+                </label>
                 <select
                   value={formData.period}
-                  onChange={(e) => setFormData({ ...formData, period: e.target.value as "morning" | "evening" })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      period: e.target.value as "morning" | "evening",
+                    })
+                  }
                   className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2 focus:border-indigo-400 focus:outline-none"
                 >
                   <option value="morning">Manha</option>
@@ -765,11 +896,15 @@ export function RoutinesAdmin({
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">Titulo</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
+                Titulo
+              </label>
               <input
                 type="text"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
                 placeholder="Ex: Acordar"
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-indigo-400 focus:outline-none"
               />
@@ -809,7 +944,9 @@ export function RoutinesAdmin({
                   {routine.time}
                 </span>
                 <span className="text-xl">{routine.emoji}</span>
-                <span className="font-semibold text-slate-700">{routine.title}</span>
+                <span className="font-semibold text-slate-700">
+                  {routine.title}
+                </span>
               </div>
               <div className="flex gap-2">
                 <button
@@ -846,7 +983,9 @@ export function RoutinesAdmin({
                   {routine.time}
                 </span>
                 <span className="text-xl">{routine.emoji}</span>
-                <span className="font-semibold text-slate-700">{routine.title}</span>
+                <span className="font-semibold text-slate-700">
+                  {routine.title}
+                </span>
               </div>
               <div className="flex gap-2">
                 <button

@@ -285,7 +285,10 @@ export const starsApi = {
 // ============ SUPER INICIATIVA ============
 export type ProactiveCategoryIcon = "studies" | "organization";
 export type ProactiveRequestStatus =
-  "pending" | "approved" | "adjusted" | "rejected";
+  | "pending"
+  | "approved"
+  | "adjusted"
+  | "rejected";
 
 export interface ProactiveRequest {
   id: string;
@@ -407,6 +410,15 @@ export interface PendingTaskApproval {
   completedAt: string | null;
 }
 
+export interface TaskCompletionResult {
+  status?: TaskStatus;
+  currentStars?: number;
+  starsEarned?: number;
+  streak?: number;
+  petReward?: PetRewardResult | null;
+  message: string;
+}
+
 export const tasksApi = {
   list: async (childId?: string): Promise<Task[]> => {
     const data: ApiTask[] = await fetchWithAuth(
@@ -444,7 +456,7 @@ export const tasksApi = {
       method: "DELETE",
     }),
 
-  complete: (id: string, childId?: string) =>
+  complete: (id: string, childId?: string): Promise<TaskCompletionResult> =>
     fetchWithAuth(withChild(`/api/tasks/${id}/complete`, childId), {
       method: "PATCH",
     }),
@@ -569,7 +581,15 @@ export const activeTasksApi = {
   pendingApproval: (childId?: string): Promise<ActiveTask[]> =>
     fetchWithAuth(withChild("/api/active-tasks/pending-approval", childId)),
 
-  complete: (id: string): Promise<ActiveTask & { message: string }> =>
+  complete: (
+    id: string,
+  ): Promise<
+    ActiveTask & {
+      message: string;
+      streak?: number;
+      petReward?: PetRewardResult | null;
+    }
+  > =>
     fetchWithAuth(`/api/active-tasks/${id}/complete`, {
       method: "PATCH",
     }),
@@ -670,7 +690,11 @@ export const missionsApi = {
     return fetchWithAuth(withChild(base, childId));
   },
 
-  complete: (id: string): Promise<Mission & { message: string }> =>
+  complete: (
+    id: string,
+  ): Promise<
+    Mission & { message: string; petReward?: PetRewardResult | null }
+  > =>
     fetchWithAuth(`/api/missions/${id}/complete`, {
       method: "PATCH",
     }),
@@ -1304,6 +1328,7 @@ export interface PetRewardResult {
       rarity: PetItemRarity;
       attachmentSlot: PetAttachmentSlot;
       attachmentKey: string;
+      assetUrl?: string | null;
       previewEmoji: string;
       isPremium: boolean;
     };

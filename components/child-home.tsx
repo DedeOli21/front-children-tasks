@@ -31,6 +31,7 @@ import {
   Send,
 } from "lucide-react"
 import { PetScreen } from "@/components/pet/pet-screen"
+import { DropModal, inferDropItemType } from "@/components/pet/drop-modal"
 import { NotificationBell } from "@/components/shared/notification-bell"
 import {
   starsApi,
@@ -58,10 +59,16 @@ import {
   type FamilyGoal,
   type ProactiveCategoryIcon,
   type ProactiveRequest,
+  type PetRewardResult,
 } from "@/lib/api"
 
 type ChildTab =
-  "tasks" | "pet" | "routine" | "penalties" | "rewards" | "mystery"
+  | "tasks"
+  | "pet"
+  | "routine"
+  | "penalties"
+  | "rewards"
+  | "mystery"
 
 interface ChildHomeProps {
   childName: string
@@ -82,6 +89,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     ProactiveRequest[]
   >([])
   const [showInitiativeModal, setShowInitiativeModal] = useState(false)
+  const [dropReward, setDropReward] = useState<PetRewardResult | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -208,6 +216,11 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     setTimeout(() => setShowConfetti(false), duration)
   }
 
+  const showDropReward = useCallback((petReward?: PetRewardResult | null) => {
+    if (!petReward?.drop.dropped || !petReward.drop.item) return
+    setDropReward(petReward)
+  }, [])
+
   const handleTaskComplete = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId)
     if (!task || task.completed) return
@@ -228,6 +241,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           : await tasksApi.complete(taskId)
       if ("streak" in result && result.streak !== undefined)
         setStreak(result.streak)
+      showDropReward(result.petReward)
       toast.info("Tarefa enviada! Aguardando o chefe aprovar 🕐")
     } catch (error) {
       console.error("Erro ao completar tarefa:", error)
@@ -250,7 +264,8 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     celebrate()
 
     try {
-      await missionsApi.complete(missionId)
+      const result = await missionsApi.complete(missionId)
+      showDropReward(result.petReward)
       toast.info("Missão enviada! Aguardando o chefe aprovar 🕐")
     } catch (error) {
       console.error("Erro ao concluir missão:", error)
@@ -420,6 +435,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   const completedTasks = tasks.filter((t) => t.completed).map((t) => t.id)
   const focusMinutes = Math.floor(focusRemainingSeconds / 60)
   const focusSeconds = focusRemainingSeconds % 60
+  const droppedItem = dropReward?.drop.item
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-yellow-50">
@@ -749,6 +765,16 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
         <Sparkles className="h-5 w-5" />
         Super Iniciativa
       </button>
+
+      <DropModal
+        open={Boolean(droppedItem)}
+        itemType={inferDropItemType(droppedItem)}
+        itemName={droppedItem?.name}
+        itemImageSrc={droppedItem?.assetUrl}
+        previewEmoji={droppedItem?.previewEmoji}
+        rarity={droppedItem?.rarity}
+        onClose={() => setDropReward(null)}
+      />
 
       {showInitiativeModal && (
         <SuperInitiativeModal

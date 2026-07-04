@@ -47,6 +47,7 @@ import {
   focusApi,
   goalsApi,
   proactiveRequestsApi,
+  petApi,
   type Task,
   type ActiveTask,
   type Penalty,
@@ -91,6 +92,8 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   >([])
   const [showInitiativeModal, setShowInitiativeModal] = useState(false)
   const [dropReward, setDropReward] = useState<PetRewardResult | null>(null)
+  const [isEquippingDrop, setIsEquippingDrop] = useState(false)
+  const [petRefreshKey, setPetRefreshKey] = useState(0)
   const [showConfetti, setShowConfetti] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -382,6 +385,33 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     toast.success(created.message)
   }
 
+  const handleDropClose = () => {
+    setDropReward(null)
+    setIsEquippingDrop(false)
+  }
+
+  const handleEquipDrop = async () => {
+    const itemId = dropReward?.drop.item?.id
+    if (!itemId) return
+
+    setIsEquippingDrop(true)
+    try {
+      const result = await petApi.equip(itemId)
+      toast.success(result.message)
+      setDropReward(null)
+      setPetRefreshKey((current) => current + 1)
+      setActiveTab("pet")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível equipar esse item.",
+      )
+    } finally {
+      setIsEquippingDrop(false)
+    }
+  }
+
   const handleAbandonFocus = async () => {
     if (!focusSession) return
     try {
@@ -437,6 +467,9 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   const focusMinutes = Math.floor(focusRemainingSeconds / 60)
   const focusSeconds = focusRemainingSeconds % 60
   const droppedItem = dropReward?.drop.item
+  const canEquipDroppedItem = Boolean(
+    droppedItem?.id && droppedItem?.attachmentSlot,
+  )
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-yellow-50">
@@ -738,7 +771,11 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
             )}
           </div>
         ) : activeTab === "pet" ? (
-          <PetScreen stars={stars} onStarsChange={setStars} />
+          <PetScreen
+            stars={stars}
+            onStarsChange={setStars}
+            refreshKey={petRefreshKey}
+          />
         ) : activeTab === "routine" ? (
           <RoutineSchedule routines={routines} />
         ) : activeTab === "penalties" ? (
@@ -784,7 +821,10 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
         itemImageSrc={droppedItem?.assetUrl}
         previewEmoji={droppedItem?.previewEmoji}
         rarity={droppedItem?.rarity}
-        onClose={() => setDropReward(null)}
+        canEquip={canEquipDroppedItem}
+        isEquipping={isEquippingDrop}
+        onEquip={handleEquipDrop}
+        onClose={handleDropClose}
       />
 
       {showInitiativeModal && (

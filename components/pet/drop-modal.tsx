@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect } from "react"
+import { useCallback, useEffect } from "react"
 import Image from "next/image"
 import { AnimatePresence, motion } from "framer-motion"
-import { Sparkles, X } from "lucide-react"
+import { Loader2, Sparkles, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { PetItemRarity } from "@/lib/api"
 
@@ -16,6 +16,9 @@ export interface DropModalProps {
   itemImageSrc?: string | null
   previewEmoji?: string
   rarity?: PetItemRarity
+  canEquip?: boolean
+  isEquipping?: boolean
+  onEquip?: () => void
   onClose: () => void
 }
 
@@ -84,9 +87,9 @@ export function inferDropItemType(item?: DropItemLike | null): DropItemType {
       .join(" "),
   )
 
-  if (/(agua|water|drop|garrafa|bottle)/.test(text)) return "water"
   if (/(freeze|potion|pocao|gelo|ice|shield|escudo)/.test(text)) return "freeze"
   if (/(food|bone|osso|comida|adubo|fertilizer)/.test(text)) return "food"
+  if (/(agua|water|garrafa|bottle)/.test(text)) return "water"
   return "cosmetic"
 }
 
@@ -105,22 +108,30 @@ export function DropModal({
   itemImageSrc,
   previewEmoji,
   rarity,
+  canEquip = false,
+  isEquipping = false,
+  onEquip,
   onClose,
 }: DropModalProps) {
   const presentation = DROP_PRESENTATION[itemType]
   const imageSrc = resolveImage(itemImageSrc, itemType)
   const title = itemName ? `Você encontrou ${itemName}!` : presentation.title
+  const showEquipAction = canEquip && Boolean(onEquip)
+
+  const handleClose = useCallback(() => {
+    if (!isEquipping) onClose()
+  }, [isEquipping, onClose])
 
   useEffect(() => {
     if (!open) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
+      if (event.key === "Escape") handleClose()
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [onClose, open])
+  }, [handleClose, open])
 
   return (
     <AnimatePresence>
@@ -130,7 +141,7 @@ export function DropModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={handleClose}
         >
           <motion.div
             role="dialog"
@@ -145,7 +156,8 @@ export function DropModal({
           >
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
+              disabled={isEquipping}
               className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200"
               aria-label="Fechar"
             >
@@ -201,16 +213,45 @@ export function DropModal({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className={cn(
-                "mt-6 w-full rounded-2xl bg-gradient-to-r py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]",
-                presentation.accent,
-              )}
-            >
-              Legal!
-            </button>
+            {showEquipAction ? (
+              <div className="mt-6 grid gap-2">
+                <button
+                  type="button"
+                  onClick={onEquip}
+                  disabled={isEquipping}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-wait disabled:opacity-80",
+                    presentation.accent,
+                  )}
+                >
+                  {isEquipping ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {isEquipping ? "Equipando..." : "Equipar agora"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={isEquipping}
+                  className="w-full rounded-2xl bg-slate-100 py-3 font-black text-slate-600 transition-colors hover:bg-slate-200 disabled:cursor-wait disabled:opacity-70"
+                >
+                  Guardar no armário
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleClose}
+                className={cn(
+                  "mt-6 w-full rounded-2xl bg-gradient-to-r py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]",
+                  presentation.accent,
+                )}
+              >
+                Legal!
+              </button>
+            )}
           </motion.div>
         </motion.div>
       ) : null}

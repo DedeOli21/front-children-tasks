@@ -7,6 +7,7 @@ import {
   missionsApi,
   authApi,
   proactiveRequestsApi,
+  petApi,
 } from "@/lib/api"
 
 // Valida que o cliente HTTP monta as rotas, os parâmetros e os headers
@@ -102,6 +103,18 @@ describe("cliente de API", () => {
 
     const [url, options] = fetchMock.mock.calls[0]
     expect(String(url)).toContain("/api/missions/m1/approve")
+    expect(options?.method).toBe("PATCH")
+  })
+
+  it("equipamento do pet usa PATCH /api/pet/inventory/:itemId/equip", async () => {
+    const fetchMock = vi
+      .mocked(fetch)
+      .mockResolvedValue(mockJsonResponse({ equipped: true }))
+
+    await petApi.equip("pet-item-1")
+
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain("/api/pet/inventory/pet-item-1/equip")
     expect(options?.method).toBe("PATCH")
   })
 

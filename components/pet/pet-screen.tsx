@@ -81,9 +81,14 @@ function petSpeciesKey(pet: VirtualPet): PetSpeciesKey {
 interface PetScreenProps {
   stars: number
   onStarsChange: (stars: number) => void
+  refreshKey?: number
 }
 
-export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
+export function PetScreen({
+  stars,
+  onStarsChange,
+  refreshKey = 0,
+}: PetScreenProps) {
   const [pet, setPet] = useState<VirtualPet | null>(null)
   const [inventory, setInventory] = useState<PetInventoryItem[]>([])
   const [shop, setShop] = useState<PetShopItem[]>([])
@@ -117,7 +122,7 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
 
   useEffect(() => {
     load()
-  }, [load])
+  }, [load, refreshKey])
 
   const consumables = inventory.filter(
     (i) => i.type === "water" || i.type === "food",

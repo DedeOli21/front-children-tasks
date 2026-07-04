@@ -31,6 +31,7 @@ import {
   resolvePetSpecies,
   type PetSpeciesKey,
 } from "@/components/pet/virtual-pet-stage"
+import { PetCloset } from "@/components/pet/pet-closet"
 
 const STAGE_LABELS: Record<VirtualPet["stage"], string> = {
   seed: "Sementinha",
@@ -54,24 +55,12 @@ const TYPE_LABELS: Record<ShopItemType, string> = {
   effect: "Efeitos",
 }
 
-const INVENTORY_TYPE_LABELS: Record<string, string> = {
-  ...TYPE_LABELS,
-  outfit: "Roupas",
-  glasses: "Óculos",
-  hat: "Chapéus",
-  species: "Espécies",
-}
-
 function inventoryKey(item: PetInventoryItem): string {
   return item.inventoryItemId ?? item.petItemId ?? item.shopItemId ?? item.name
 }
 
 function equipTargetId(item: PetInventoryItem): string | null {
   return item.inventoryItemId ?? item.petItemId ?? item.shopItemId ?? null
-}
-
-function itemTypeLabel(type: PetInventoryItem["type"]): string {
-  return INVENTORY_TYPE_LABELS[type] ?? "Cosmético"
 }
 
 function petBackgroundKey(pet: VirtualPet): string {
@@ -487,44 +476,7 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
 
       {/* ============ ARMÁRIO (cosméticos) ============ */}
       {view === "closet" && (
-        <div className="rounded-2xl bg-card p-4 shadow-lg">
-          <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">
-            Seus itens
-          </p>
-          {cosmetics.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              Nenhum item ainda — visite a Loja Botânica! 🛍️
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {cosmetics.map((item) => (
-                <div
-                  key={inventoryKey(item)}
-                  className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/40 p-3"
-                >
-                  <span className="text-3xl">{item.emoji}</span>
-                  <div className="flex-1">
-                    <p className="font-bold text-foreground">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {itemTypeLabel(item.type)}
-                      {item.rarity ? ` · ${item.rarity}` : ""}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleEquip(item)}
-                    className={`shrink-0 rounded-xl px-3 py-2 text-sm font-black shadow transition-transform hover:scale-105 ${
-                      item.equipped
-                        ? "bg-purple-500 text-white"
-                        : "bg-purple-100 text-purple-700"
-                    }`}
-                  >
-                    {item.equipped ? "Equipado ✓" : "Equipar"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <PetCloset items={cosmetics} onEquip={handleEquip} />
       )}
     </div>
   )

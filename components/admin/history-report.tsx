@@ -76,7 +76,7 @@ export function HistoryReport({ childId }: HistoryReportProps) {
       
       if (entry.type === "task_complete") {
         tasksByDay[date] = (tasksByDay[date] || 0) + 1
-      } else if (entry.type === "penalty") {
+      } else if (entry.type === "penalty" || entry.type === "daily_penalty") {
         penaltiesByDay[date] = (penaltiesByDay[date] || 0) + 1
       } else if (entry.type === "reward_redeem") {
         rewardsByDay[date] = (rewardsByDay[date] || 0) + 1
@@ -98,7 +98,9 @@ export function HistoryReport({ childId }: HistoryReportProps) {
   // Dados para gráfico de pizza
   const pieData = useMemo(() => {
     const tasks = history.filter((e) => e.type === "task_complete").length
-    const penalties = history.filter((e) => e.type === "penalty").length
+    const penalties = history.filter(
+      (e) => e.type === "penalty" || e.type === "daily_penalty",
+    ).length
     const rewards = history.filter((e) => e.type === "reward_redeem").length
 
     return [
@@ -111,7 +113,9 @@ export function HistoryReport({ childId }: HistoryReportProps) {
   // Estatísticas
   const stats = useMemo(() => {
     const tasksCompleted = history.filter((e) => e.type === "task_complete").length
-    const penaltiesApplied = history.filter((e) => e.type === "penalty").length
+    const penaltiesApplied = history.filter(
+      (e) => e.type === "penalty" || e.type === "daily_penalty",
+    ).length
     const rewardsRedeemed = history.filter((e) => e.type === "reward_redeem").length
     const starsEarned = history
       .filter((e) => e.starsChange > 0)
@@ -383,10 +387,12 @@ export function HistoryReport({ childId }: HistoryReportProps) {
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {history.map((entry) => {
               const isPositive = entry.starsChange > 0
+              const isNeutral = entry.starsChange === 0
               const typeIcon =
                 entry.type === "task_complete" ? (
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : entry.type === "penalty" ? (
+                ) : entry.type === "penalty" ||
+                  entry.type === "daily_penalty" ? (
                   <AlertTriangle className="h-4 w-4 text-red-600" />
                 ) : (
                   <Gift className="h-4 w-4 text-amber-600" />
@@ -408,13 +414,16 @@ export function HistoryReport({ childId }: HistoryReportProps) {
                   </div>
                   <span
                     className={`rounded-full px-3 py-1 font-bold ${
-                      isPositive
+                      isNeutral
+                        ? "bg-slate-100 text-slate-500"
+                        : isPositive
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
                     }`}
                   >
-                    {isPositive ? "+" : ""}
-                    {entry.starsChange} ⭐
+                    {isNeutral
+                      ? "Sem estrelas"
+                      : `${isPositive ? "+" : ""}${entry.starsChange} ⭐`}
                   </span>
                 </div>
               )
@@ -429,4 +438,3 @@ export function HistoryReport({ childId }: HistoryReportProps) {
     </div>
   )
 }
-

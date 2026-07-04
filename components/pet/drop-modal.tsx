@@ -16,6 +16,7 @@ export interface DropModalProps {
   itemImageSrc?: string | null
   previewEmoji?: string
   rarity?: PetItemRarity
+  bonusLabel?: string
   canEquip?: boolean
   isEquipping?: boolean
   onEquip?: () => void
@@ -108,6 +109,7 @@ export function DropModal({
   itemImageSrc,
   previewEmoji,
   rarity,
+  bonusLabel,
   canEquip = false,
   isEquipping = false,
   onEquip,
@@ -211,6 +213,11 @@ export function DropModal({
                 {previewEmoji ? `${previewEmoji} ` : ""}
                 {rarity ? `Raridade ${RARITY_LABELS[rarity]}` : "Novo item"}
               </p>
+              {bonusLabel ? (
+                <p className="rounded-2xl bg-sky-50 px-3 py-2 text-sm font-black text-sky-700">
+                  {bonusLabel}
+                </p>
+              ) : null}
             </div>
 
             {showEquipAction ? (

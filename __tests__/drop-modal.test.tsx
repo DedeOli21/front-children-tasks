@@ -32,4 +32,18 @@ describe("DropModal", () => {
     expect(onEquip).toHaveBeenCalledTimes(1)
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  it("shows functional drop bonus feedback", () => {
+    render(
+      <DropModal
+        open
+        itemType="freeze"
+        itemName="Pocao de Protecao"
+        bonusLabel="+1 proteção de sequência"
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("+1 proteção de sequência")).toBeInTheDocument()
+  })
 })

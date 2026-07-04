@@ -852,7 +852,9 @@ export interface HistoryEntry {
   type:
     | "task_complete"
     | "penalty"
+    | "daily_penalty"
     | "reward_redeem"
+    | "streak_freeze_gained"
     | "streak_freeze_used"
     | "stars_add"
     | "stars_subtract";
@@ -1331,6 +1333,12 @@ export interface PetRewardResult {
       assetUrl?: string | null;
       previewEmoji: string;
       isPremium: boolean;
+    };
+    bonus?: {
+      type: "streak_freeze";
+      amount: number;
+      newBalance: number;
+      label: string;
     };
   };
 }

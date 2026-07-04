@@ -222,6 +222,9 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
 
   const showDropReward = useCallback((petReward?: PetRewardResult | null) => {
     if (!petReward?.drop.dropped || !petReward.drop.item) return
+    if (petReward.drop.bonus?.type === "streak_freeze") {
+      setFreezes(petReward.drop.bonus.newBalance)
+    }
     setDropReward(petReward)
   }, [])
 
@@ -467,6 +470,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   const focusMinutes = Math.floor(focusRemainingSeconds / 60)
   const focusSeconds = focusRemainingSeconds % 60
   const droppedItem = dropReward?.drop.item
+  const dropBonus = dropReward?.drop.bonus
   const canEquipDroppedItem = Boolean(
     droppedItem?.id && droppedItem?.attachmentSlot,
   )
@@ -821,6 +825,11 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
         itemImageSrc={droppedItem?.assetUrl}
         previewEmoji={droppedItem?.previewEmoji}
         rarity={droppedItem?.rarity}
+        bonusLabel={
+          dropBonus?.type === "streak_freeze"
+            ? `+${dropBonus.amount} proteção de sequência`
+            : undefined
+        }
         canEquip={canEquipDroppedItem}
         isEquipping={isEquippingDrop}
         onEquip={handleEquipDrop}

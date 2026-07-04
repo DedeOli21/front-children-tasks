@@ -6,6 +6,7 @@ import {
   starsApi,
   missionsApi,
   authApi,
+  proactiveRequestsApi,
 } from "@/lib/api"
 
 // Valida que o cliente HTTP monta as rotas, os parâmetros e os headers
@@ -102,6 +103,42 @@ describe("cliente de API", () => {
     const [url, options] = fetchMock.mock.calls[0]
     expect(String(url)).toContain("/api/missions/m1/approve")
     expect(options?.method).toBe("PATCH")
+  })
+
+  it("Super Iniciativa cria, lista pendentes e aprova com ajuste de estrelas", async () => {
+    const fetchMock = vi
+      .mocked(fetch)
+      .mockResolvedValue(mockJsonResponse({ id: "p1", status: "pending" }))
+
+    await proactiveRequestsApi.create({
+      categoryIcon: "studies",
+      description: "Li um livro sozinho",
+      suggestedStars: 4,
+    })
+
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      "/api/proactive-requests",
+    )
+    expect(fetchMock.mock.calls[0][1]?.method).toBe("POST")
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      categoryIcon: "studies",
+      description: "Li um livro sozinho",
+      suggestedStars: 4,
+    })
+
+    await proactiveRequestsApi.pending("crianca-1")
+    expect(String(fetchMock.mock.calls[1][0])).toContain(
+      "/api/proactive-requests/pending?childId=crianca-1",
+    )
+
+    await proactiveRequestsApi.approve("p1", 6)
+    expect(String(fetchMock.mock.calls[2][0])).toContain(
+      "/api/proactive-requests/p1/approve",
+    )
+    expect(fetchMock.mock.calls[2][1]?.method).toBe("PATCH")
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({
+      finalStars: 6,
+    })
   })
 
   it("propaga a mensagem de erro da API em respostas não-ok", async () => {

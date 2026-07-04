@@ -282,6 +282,77 @@ export const starsApi = {
     }),
 };
 
+// ============ SUPER INICIATIVA ============
+export type ProactiveCategoryIcon = "studies" | "organization";
+export type ProactiveRequestStatus =
+  "pending" | "approved" | "adjusted" | "rejected";
+
+export interface ProactiveRequest {
+  id: string;
+  familyId: string;
+  childId: string;
+  childName?: string;
+  categoryIcon: ProactiveCategoryIcon;
+  categoryEmoji?: string;
+  description: string;
+  suggestedStars: number;
+  finalStars: number | null;
+  status: ProactiveRequestStatus;
+  reviewedById?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProactiveApprovalResult extends ProactiveRequest {
+  currentStars: number;
+  starsEarned: number;
+  message: string;
+}
+
+export const proactiveRequestsApi = {
+  create: (data: {
+    categoryIcon: ProactiveCategoryIcon;
+    description: string;
+    suggestedStars: number;
+  }): Promise<ProactiveRequest & { message: string }> =>
+    fetchWithAuth("/api/proactive-requests", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  list: (
+    status?: ProactiveRequestStatus,
+    childId?: string,
+  ): Promise<ProactiveRequest[]> => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (childId) params.set("childId", childId);
+    const query = params.toString();
+    return fetchWithAuth(`/api/proactive-requests${query ? `?${query}` : ""}`);
+  },
+
+  pending: (childId?: string): Promise<ProactiveRequest[]> =>
+    fetchWithAuth(withChild("/api/proactive-requests/pending", childId)),
+
+  approve: (
+    id: string,
+    finalStars?: number,
+  ): Promise<ProactiveApprovalResult> =>
+    fetchWithAuth(`/api/proactive-requests/${id}/approve`, {
+      method: "PATCH",
+      ...(finalStars === undefined
+        ? {}
+        : { body: JSON.stringify({ finalStars }) }),
+    }),
+
+  reject: (id: string): Promise<ProactiveRequest & { message: string }> =>
+    fetchWithAuth(`/api/proactive-requests/${id}/reject`, {
+      method: "PATCH",
+    }),
+};
+
 // ============ TAREFAS ============
 // Fluxo de aprovação: pending → completed (criança marcou) → approved (responsável liberou as estrelas)
 export type TaskStatus = "pending" | "completed" | "approved";
@@ -292,6 +363,8 @@ export interface Task {
   emoji: string;
   completed: boolean;
   source?: "classic" | "active";
+  // Presente apenas quando source === "active": id do TaskTemplate que originou a instância do dia
+  templateId?: string;
   // Sempre presente nas tarefas vindas da API (mapTask); opcional em payloads de criação
   status?: TaskStatus;
   completedAt?: string;

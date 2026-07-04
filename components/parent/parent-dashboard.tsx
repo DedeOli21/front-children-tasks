@@ -30,6 +30,7 @@ import { HistoryReport } from "@/components/admin/history-report"
 import {
   childrenApi,
   activeTasksApi,
+  taskTemplatesApi,
   tasksApi,
   penaltiesApi,
   rewardsApi,
@@ -136,6 +137,7 @@ export function ParentDashboard({
           status: task.status,
           completedAt: task.completedAt ?? undefined,
           source: "active" as const,
+          templateId: task.templateId,
         })),
       ]
     },
@@ -425,8 +427,18 @@ export function ParentDashboard({
   }
 
   const handleTaskUpdate = async (id: string, taskData: Partial<Task>) => {
+    // Tarefas de origem "active" vêm de um TaskTemplate (rotina recorrente):
+    // editar precisa mudar o template, não a instância materializada do dia.
+    const target = childTasks.find((t) => t.id === id)
     try {
-      await tasksApi.update(id, taskData)
+      if (target?.source === "active" && target.templateId) {
+        await taskTemplatesApi.update(target.templateId, {
+          title: taskData.title,
+          emoji: taskData.emoji,
+        })
+      } else {
+        await tasksApi.update(id, taskData)
+      }
       setChildTasks((prev) =>
         prev.map((t) => (t.id === id ? { ...t, ...taskData } : t)),
       )
@@ -440,8 +452,14 @@ export function ParentDashboard({
   }
 
   const handleTaskDelete = async (id: string) => {
+    const target = childTasks.find((t) => t.id === id)
     try {
-      await tasksApi.delete(id)
+      if (target?.source === "active" && target.templateId) {
+        // Exclui a rotina inteira (template), não só a instância de hoje.
+        await taskTemplatesApi.remove(target.templateId)
+      } else {
+        await tasksApi.delete(id)
+      }
       setChildTasks((prev) => prev.filter((t) => t.id !== id))
       queryClient.invalidateQueries({
         queryKey: queryKeys.tasks(selectedChildId),

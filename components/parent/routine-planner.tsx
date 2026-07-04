@@ -19,11 +19,13 @@ import {
   templatesApi,
   tasksApi,
   starsApi,
+  proactiveRequestsApi,
   activeTasksApi,
   type Mission,
   type RoutineTemplate,
   type PendingTaskApproval,
   type StarRequest,
+  type ProactiveRequest,
   type Child,
   type ActiveTask,
 } from "@/lib/api";
@@ -33,6 +35,12 @@ import { TaskTemplateComposer } from "@/components/parent/task-template-composer
 // Item selecionado no painel lateral, aguardando um clique/drop em um dia
 type Selection =
   { type: "mission"; id: string } | { type: "template"; id: string } | null;
+
+const proactiveCategoryLabel: Record<ProactiveRequest["categoryIcon"], string> =
+  {
+    studies: "Estudos",
+    organization: "Organização",
+  };
 
 interface RoutinePlannerProps {
   children: Child[];
@@ -91,6 +99,12 @@ export function RoutinePlanner({
   const [pendingStarRequests, setPendingStarRequests] = useState<StarRequest[]>(
     [],
   );
+  const [pendingProactiveRequests, setPendingProactiveRequests] = useState<
+    ProactiveRequest[]
+  >([]);
+  const [proactiveStarsById, setProactiveStarsById] = useState<
+    Record<string, string>
+  >({});
 
   const [selection, setSelection] = useState<Selection>(null);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -128,17 +142,33 @@ export function RoutinePlanner({
   }, [selectedChildId]);
 
   const loadReview = useCallback(async () => {
-    const [tasksData, activeTasksData, missionsData, starRequestsData] =
-      await Promise.all([
-        tasksApi.pendingApproval().catch(() => [] as PendingTaskApproval[]),
-        activeTasksApi.pendingApproval().catch(() => [] as ActiveTask[]),
-        missionsApi.pendingApproval().catch(() => [] as Mission[]),
-        starsApi.listRequests().catch(() => [] as StarRequest[]),
-      ]);
+    const [
+      tasksData,
+      activeTasksData,
+      missionsData,
+      starRequestsData,
+      proactiveRequestsData,
+    ] = await Promise.all([
+      tasksApi.pendingApproval().catch(() => [] as PendingTaskApproval[]),
+      activeTasksApi.pendingApproval().catch(() => [] as ActiveTask[]),
+      missionsApi.pendingApproval().catch(() => [] as Mission[]),
+      starsApi.listRequests().catch(() => [] as StarRequest[]),
+      proactiveRequestsApi.pending().catch(() => [] as ProactiveRequest[]),
+    ]);
     setPendingTasks(tasksData);
     setPendingActiveTasks(activeTasksData);
     setPendingMissions(missionsData);
     setPendingStarRequests(starRequestsData);
+    setPendingProactiveRequests(proactiveRequestsData);
+    setProactiveStarsById((current) => {
+      const next = { ...current };
+      proactiveRequestsData.forEach((request) => {
+        if (next[request.id] === undefined) {
+          next[request.id] = String(request.suggestedStars);
+        }
+      });
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -158,7 +188,8 @@ export function RoutinePlanner({
     pendingTasks.length +
     pendingActiveTasks.length +
     pendingMissions.length +
-    pendingStarRequests.length;
+    pendingStarRequests.length +
+    pendingProactiveRequests.length;
 
   // ============ ALOCAÇÃO (clique ou drag-and-drop) ============
   const allocateToDay = async (sel: Selection, date: string) => {
@@ -274,6 +305,53 @@ export function RoutinePlanner({
       const result = await starsApi.rejectRequest(request.id);
       toast.success(result.message);
       setPendingStarRequests((prev) => prev.filter((p) => p.id !== request.id));
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível recusar",
+      );
+    }
+  };
+
+  const handleApproveProactiveRequest = async (request: ProactiveRequest) => {
+    const rawValue =
+      proactiveStarsById[request.id] ?? String(request.suggestedStars);
+    const finalStars = Number.parseInt(rawValue, 10);
+    if (!Number.isInteger(finalStars) || finalStars < 0 || finalStars > 50) {
+      toast.error("Informe um valor entre 0 e 50 estrelas");
+      return;
+    }
+
+    try {
+      const result = await proactiveRequestsApi.approve(request.id, finalStars);
+      toast.success(result.message);
+      onStarsChanged(request.childId, result.currentStars);
+      setPendingProactiveRequests((prev) =>
+        prev.filter((p) => p.id !== request.id),
+      );
+      setProactiveStarsById((prev) => {
+        const next = { ...prev };
+        delete next[request.id];
+        return next;
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível aprovar",
+      );
+    }
+  };
+
+  const handleRejectProactiveRequest = async (request: ProactiveRequest) => {
+    try {
+      const result = await proactiveRequestsApi.reject(request.id);
+      toast.success(result.message);
+      setPendingProactiveRequests((prev) =>
+        prev.filter((p) => p.id !== request.id),
+      );
+      setProactiveStarsById((prev) => {
+        const next = { ...prev };
+        delete next[request.id];
+        return next;
+      });
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Não foi possível recusar",
@@ -472,6 +550,74 @@ export function RoutinePlanner({
                   </div>
                 </div>
               ))}
+              {/* Super Iniciativas enviadas pela criança */}
+              {pendingProactiveRequests.map((request) => {
+                const starsValue =
+                  proactiveStarsById[request.id] ??
+                  String(request.suggestedStars);
+                const previewStars = Number.parseInt(starsValue, 10);
+                return (
+                  <div
+                    key={request.id}
+                    className="rounded-2xl bg-white p-4 shadow-lg ring-2 ring-emerald-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">
+                        {request.categoryEmoji ?? "✨"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-slate-700">
+                          Super Iniciativa de {request.childName}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {proactiveCategoryLabel[request.categoryIcon]} ·{" "}
+                          sugeriu +{request.suggestedStars} estrela(s)
+                        </p>
+                        <p className="mt-1 text-sm italic text-slate-600">
+                          &ldquo;{request.description}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                      <label className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2">
+                        <Star className="h-4 w-4 fill-yellow-300 text-yellow-400" />
+                        <span className="text-xs font-black uppercase text-emerald-700">
+                          Estrelas finais
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={starsValue}
+                          onChange={(event) =>
+                            setProactiveStarsById((prev) => ({
+                              ...prev,
+                              [request.id]: event.target.value,
+                            }))
+                          }
+                          className="ml-auto w-16 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-center text-sm font-black text-emerald-700 outline-none focus:border-emerald-400"
+                        />
+                      </label>
+                      <button
+                        onClick={() => handleRejectProactiveRequest(request)}
+                        className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200"
+                      >
+                        Recusar
+                      </button>
+                      <button
+                        onClick={() => handleApproveProactiveRequest(request)}
+                        className="flex items-center justify-center gap-1 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-black text-white shadow transition-transform hover:scale-[1.02]"
+                      >
+                        <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
+                        Aprovar +
+                        {Number.isInteger(previewStars)
+                          ? previewStars
+                          : request.suggestedStars}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </>
           )}
         </div>

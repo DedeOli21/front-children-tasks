@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { StarPanel } from "@/components/star-panel"
 import { TaskList } from "@/components/task-list"
@@ -24,6 +24,11 @@ import {
   Timer,
   XCircle,
   Sprout,
+  Sparkles,
+  BookOpen,
+  House,
+  Mic,
+  Send,
 } from "lucide-react"
 import { PetScreen } from "@/components/pet/pet-screen"
 import { NotificationBell } from "@/components/shared/notification-bell"
@@ -39,6 +44,7 @@ import {
   missionsApi,
   focusApi,
   goalsApi,
+  proactiveRequestsApi,
   type Task,
   type ActiveTask,
   type Penalty,
@@ -50,6 +56,8 @@ import {
   type StreakData,
   type FocusSession,
   type FamilyGoal,
+  type ProactiveCategoryIcon,
+  type ProactiveRequest,
 } from "@/lib/api"
 
 type ChildTab =
@@ -70,6 +78,10 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   const [freezes, setFreezes] = useState(0)
   const [plant, setPlant] = useState<StreakData["plant"] | null>(null)
   const [pendingBonuses, setPendingBonuses] = useState<StarRequest[]>([])
+  const [pendingInitiatives, setPendingInitiatives] = useState<
+    ProactiveRequest[]
+  >([])
+  const [showInitiativeModal, setShowInitiativeModal] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -102,6 +114,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
         streakData,
         mysteryBoxConfig,
         bonusesData,
+        initiativesData,
       ] = await Promise.all([
         starsApi.getBalance(),
         tasksApi.list(),
@@ -116,6 +129,9 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           .getConfig()
           .catch(() => ({ cost: 5, prizes: [] as MysteryPrize[] })),
         starsApi.listRequests().catch(() => [] as StarRequest[]),
+        proactiveRequestsApi
+          .list("pending")
+          .catch(() => [] as ProactiveRequest[]),
       ])
 
       setStars(starsData.stars ?? 0)
@@ -141,6 +157,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       setFreezes(streakData?.streakFreezes ?? 0)
       setPlant(streakData?.plant ?? null)
       setPendingBonuses(bonusesData)
+      setPendingInitiatives(initiativesData)
       setMysteryPrizes(mysteryBoxConfig.prizes)
       setMysteryBoxCost(mysteryBoxConfig.cost || 5)
     } catch (error) {
@@ -339,6 +356,16 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
     }
   }
 
+  const handleCreateProactiveRequest = async (data: {
+    categoryIcon: ProactiveCategoryIcon
+    description: string
+    suggestedStars: number
+  }) => {
+    const created = await proactiveRequestsApi.create(data)
+    setPendingInitiatives((prev) => [created, ...prev])
+    toast.success(created.message)
+  }
+
   const handleAbandonFocus = async () => {
     if (!focusSession) return
     try {
@@ -477,6 +504,18 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
             </p>
             <p className="mt-1 text-sm font-semibold text-purple-500">
               Aguardando o chefe aprovar! 🕐
+            </p>
+          </div>
+        )}
+
+        {pendingInitiatives.length > 0 && (
+          <div className="rounded-2xl bg-gradient-to-r from-emerald-100 to-lime-100 p-4 shadow-lg ring-2 ring-emerald-200">
+            <p className="font-black text-emerald-700">
+              ✨ {pendingInitiatives.length} Super Iniciativa
+              {pendingInitiatives.length > 1 ? "s" : ""} aguardando aprovação
+            </p>
+            <p className="mt-1 text-sm font-semibold text-emerald-600/80">
+              O chefe vai revisar e liberar as estrelas.
             </p>
           </div>
         )}
@@ -702,7 +741,252 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
 
       {/* Bottom padding for mobile */}
       <div className="h-8" />
+
+      <button
+        onClick={() => setShowInitiativeModal(true)}
+        className="fixed bottom-5 right-4 z-40 flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 font-black text-white shadow-2xl shadow-emerald-700/30 transition-transform hover:scale-105 active:scale-95"
+      >
+        <Sparkles className="h-5 w-5" />
+        Super Iniciativa
+      </button>
+
+      {showInitiativeModal && (
+        <SuperInitiativeModal
+          onClose={() => setShowInitiativeModal(false)}
+          onSubmit={handleCreateProactiveRequest}
+        />
+      )}
     </main>
+  )
+}
+
+type SpeechRecognitionEventLike = Event & {
+  results: {
+    length: number
+    [index: number]: {
+      [index: number]: {
+        transcript: string
+      }
+    }
+  }
+}
+
+interface SpeechRecognitionController extends EventTarget {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionController
+
+function SuperInitiativeModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void
+  onSubmit: (data: {
+    categoryIcon: ProactiveCategoryIcon
+    description: string
+    suggestedStars: number
+  }) => Promise<void>
+}) {
+  const [categoryIcon, setCategoryIcon] =
+    useState<ProactiveCategoryIcon>("studies")
+  const [description, setDescription] = useState("")
+  const [suggestedStars, setSuggestedStars] = useState("3")
+  const [isSaving, setIsSaving] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<SpeechRecognitionController | null>(null)
+
+  const speechWindow =
+    typeof window === "undefined"
+      ? null
+      : (window as Window & {
+          SpeechRecognition?: SpeechRecognitionConstructor
+          webkitSpeechRecognition?: SpeechRecognitionConstructor
+        })
+  const Recognition =
+    speechWindow?.SpeechRecognition ?? speechWindow?.webkitSpeechRecognition
+
+  const handleVoice = () => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+      return
+    }
+
+    if (!Recognition) {
+      toast.error("Seu navegador ainda não liberou gravação por voz.")
+      return
+    }
+
+    const recognition = new Recognition()
+    recognitionRef.current = recognition
+    recognition.lang = "pt-BR"
+    recognition.interimResults = false
+    recognition.continuous = false
+    recognition.onresult = (event) => {
+      const transcript = Array.from({ length: event.results.length })
+        .map((_, index) => event.results[index]?.[0]?.transcript ?? "")
+        .join(" ")
+        .trim()
+      if (transcript) {
+        setDescription((current) =>
+          [current.trim(), transcript].filter(Boolean).join(" "),
+        )
+      }
+    }
+    recognition.onerror = () => {
+      setIsListening(false)
+      toast.error("Não consegui ouvir agora. Tente de novo.")
+    }
+    recognition.onend = () => setIsListening(false)
+    setIsListening(true)
+    recognition.start()
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    const stars = Number.parseInt(suggestedStars, 10)
+    if (description.trim().length < 5) {
+      toast.error("Conte um pouco mais sobre o que você fez.")
+      return
+    }
+    if (!Number.isInteger(stars) || stars < 1 || stars > 25) {
+      toast.error("Sugira entre 1 e 25 estrelas.")
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      await onSubmit({
+        categoryIcon,
+        description: description.trim(),
+        suggestedStars: stars,
+      })
+      onClose()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar a iniciativa.",
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0">
+      <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-black uppercase text-emerald-500">
+              Super Iniciativa
+            </p>
+            <h2 className="text-xl font-black text-slate-800">
+              O que você fez?
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setCategoryIcon("studies")}
+              className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3 font-black transition-all ${
+                categoryIcon === "studies"
+                  ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                  : "border-slate-100 bg-slate-50 text-slate-500"
+              }`}
+            >
+              <BookOpen className="h-5 w-5" />
+              Estudos
+            </button>
+            <button
+              type="button"
+              onClick={() => setCategoryIcon("organization")}
+              className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3 font-black transition-all ${
+                categoryIcon === "organization"
+                  ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                  : "border-slate-100 bg-slate-50 text-slate-500"
+              }`}
+            >
+              <House className="h-5 w-5" />
+              Organização
+            </button>
+          </div>
+
+          <div className="rounded-2xl border-2 border-slate-100 bg-slate-50 p-3 focus-within:border-emerald-300">
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Ex: arrumei meu quarto sem ninguém pedir"
+              rows={4}
+              maxLength={500}
+              className="min-h-28 w-full resize-none bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+            />
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleVoice}
+                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition-colors ${
+                  isListening
+                    ? "bg-red-100 text-red-600"
+                    : "bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Mic className="h-4 w-4" />
+                {isListening ? "Ouvindo" : "Gravar"}
+              </button>
+              <span className="text-xs font-bold text-slate-400">
+                {description.length}/500
+              </span>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 rounded-2xl bg-amber-50 px-4 py-3">
+            <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+            <span className="flex-1 text-sm font-black text-amber-700">
+              Estrelas sugeridas
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={25}
+              value={suggestedStars}
+              onChange={(event) => setSuggestedStars(event.target.value)}
+              className="w-20 rounded-xl border border-amber-200 bg-white px-3 py-2 text-center font-black text-amber-700 outline-none focus:border-amber-400"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 font-black text-white shadow-lg transition-transform hover:scale-[1.01] disabled:opacity-50"
+          >
+            {isSaving ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+            Enviar para aprovação
+          </button>
+        </form>
+      </div>
+    </div>
   )
 }
 

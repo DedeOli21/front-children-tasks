@@ -13,7 +13,12 @@ import {
   Check,
   X,
 } from "lucide-react"
-import { playWaterSound, playEatSound, playCoinSound, playBubbleSound } from "@/lib/sound"
+import {
+  playWaterSound,
+  playEatSound,
+  playCoinSound,
+  playBubbleSound,
+} from "@/lib/sound"
 import {
   petApi,
   type VirtualPet,
@@ -21,7 +26,11 @@ import {
   type PetInventoryItem,
   type ShopItemType,
 } from "@/lib/api"
-import { VirtualPetStage } from "@/components/pet/virtual-pet-stage"
+import {
+  VirtualPetStage,
+  resolvePetSpecies,
+  type PetSpeciesKey,
+} from "@/components/pet/virtual-pet-stage"
 
 const STAGE_LABELS: Record<VirtualPet["stage"], string> = {
   seed: "Sementinha",
@@ -76,6 +85,10 @@ function petVisualStreak(pet: VirtualPet): number {
   return Math.max(1, pet.level - 1)
 }
 
+function petSpeciesKey(pet: VirtualPet): PetSpeciesKey {
+  return resolvePetSpecies(pet.equippedItems?.species ?? pet.modelKey)
+}
+
 interface PetScreenProps {
   stars: number
   onStarsChange: (stars: number) => void
@@ -117,8 +130,12 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
     load()
   }, [load])
 
-  const consumables = inventory.filter((i) => i.type === "water" || i.type === "food")
-  const cosmetics = inventory.filter((i) => i.type !== "water" && i.type !== "food")
+  const consumables = inventory.filter(
+    (i) => i.type === "water" || i.type === "food",
+  )
+  const cosmetics = inventory.filter(
+    (i) => i.type !== "water" && i.type !== "food",
+  )
 
   const handleCare = async (item: PetInventoryItem) => {
     if (!item.shopItemId) {
@@ -143,7 +160,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       setInventory((prev) =>
         prev
           .map((entry) =>
-            entry.shopItemId === item.shopItemId ? { ...entry, quantity: result.remaining } : entry,
+            entry.shopItemId === item.shopItemId
+              ? { ...entry, quantity: result.remaining }
+              : entry,
           )
           .filter((entry) => entry.quantity > 0),
       )
@@ -158,7 +177,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       }, 900)
       toast.success(result.message)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não deu certo, tente de novo")
+      toast.error(
+        err instanceof Error ? err.message : "Não deu certo, tente de novo",
+      )
     }
   }
 
@@ -171,7 +192,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       const fresh = await petApi.inventory().catch(() => inventory)
       setInventory(fresh)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível comprar")
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível comprar",
+      )
     }
   }
 
@@ -186,11 +209,16 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       const result = await petApi.equip(targetId)
       playBubbleSound()
       toast.success(result.message)
-      const [freshPet, freshInventory] = await Promise.all([petApi.get(), petApi.inventory()])
+      const [freshPet, freshInventory] = await Promise.all([
+        petApi.get(),
+        petApi.inventory(),
+      ])
       setPet(freshPet)
       setInventory(freshInventory)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível equipar")
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível equipar",
+      )
     }
   }
 
@@ -216,6 +244,7 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
 
   const currentBackground = petBackgroundKey(pet)
   const visualStreak = petVisualStreak(pet)
+  const species = petSpeciesKey(pet)
   const hasPremiumAttachment =
     pet.equippedAttachments?.some((item) => item.isPremium) ?? false
 
@@ -225,7 +254,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
         streak={visualStreak}
         isPremium={hasPremiumAttachment}
         isCelebrating={isReacting}
+        isSick={pet.sick || pet.animationState === "sick"}
         currentBackground={currentBackground}
+        species={species}
         petName={pet.name}
       >
         <div className="flex flex-col items-center gap-1">
@@ -240,10 +271,17 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
                   maxLength={20}
                   className="w-40 rounded-xl border-2 border-emerald-300 bg-white/90 px-3 py-1 text-center font-black text-slate-700 focus:outline-none"
                 />
-                <button type="submit" className="rounded-lg bg-emerald-500 p-1.5 text-white">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-emerald-500 p-1.5 text-white"
+                >
                   <Check className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => setIsRenaming(false)} className="rounded-lg bg-slate-300 p-1.5 text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => setIsRenaming(false)}
+                  className="rounded-lg bg-slate-300 p-1.5 text-slate-600"
+                >
                   <X className="h-4 w-4" />
                 </button>
               </form>
@@ -289,7 +327,8 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       {pet.sick ? (
         <div className="rounded-xl bg-red-50 p-3 text-center">
           <p className="text-sm font-bold text-red-500">
-            Sua plantinha está doente! As tarefas de ontem ficaram incompletas...
+            Sua plantinha está doente! As tarefas de ontem ficaram
+            incompletas...
           </p>
           <p className="text-xs font-semibold text-red-400">
             Complete todos os combinados de hoje para curá-la.
@@ -297,7 +336,8 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
         </div>
       ) : pet.wilted ? (
         <p className="text-center text-sm font-bold text-red-500">
-          Ela murchou com a quebra da sequência. Complete os combinados para replantar.
+          Ela murchou com a quebra da sequência. Complete os combinados para
+          replantar.
         </p>
       ) : null}
 
@@ -326,7 +366,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       {/* ============ CUIDAR (consumíveis do inventário) ============ */}
       {consumables.length > 0 && (
         <div className="rounded-2xl bg-card p-4 shadow-lg">
-          <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">Cuidar da plantinha</p>
+          <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">
+            Cuidar da plantinha
+          </p>
           <div className="flex flex-wrap gap-2">
             {consumables.map((item) => (
               <button
@@ -336,7 +378,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
               >
                 <span className="text-2xl">{item.emoji}</span>
                 <span className="text-sm">{item.name}</span>
-                <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-xs font-black">×{item.quantity}</span>
+                <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-xs font-black">
+                  ×{item.quantity}
+                </span>
               </button>
             ))}
           </div>
@@ -348,7 +392,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
         <button
           onClick={() => setView(view === "shop" ? "pet" : "shop")}
           className={`flex items-center justify-center gap-2 rounded-2xl py-3 font-black shadow-lg transition-all ${
-            view === "shop" ? "bg-emerald-500 text-white" : "bg-card text-foreground hover:scale-[1.02]"
+            view === "shop"
+              ? "bg-emerald-500 text-white"
+              : "bg-card text-foreground hover:scale-[1.02]"
           }`}
         >
           <ShoppingBag className="h-5 w-5" />
@@ -357,7 +403,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
         <button
           onClick={() => setView(view === "closet" ? "pet" : "closet")}
           className={`flex items-center justify-center gap-2 rounded-2xl py-3 font-black shadow-lg transition-all ${
-            view === "closet" ? "bg-purple-500 text-white" : "bg-card text-foreground hover:scale-[1.02]"
+            view === "closet"
+              ? "bg-purple-500 text-white"
+              : "bg-card text-foreground hover:scale-[1.02]"
           }`}
         >
           <Shirt className="h-5 w-5" />
@@ -368,26 +416,43 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       {/* ============ LOJA ============ */}
       {view === "shop" && (
         <div className="space-y-3">
-          {(["water", "food", "skin", "background", "effect"] as ShopItemType[]).map((type) => {
+          {(
+            ["water", "food", "skin", "background", "effect"] as ShopItemType[]
+          ).map((type) => {
             const items = shop.filter((item) => item.type === type)
             if (items.length === 0) return null
             return (
               <div key={type} className="rounded-2xl bg-card p-4 shadow-lg">
-                <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">{TYPE_LABELS[type]}</p>
+                <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">
+                  {TYPE_LABELS[type]}
+                </p>
                 <div className="space-y-2">
                   {items.map((item) => {
-                    const owned = inventory.find((entry) => entry.shopItemId === item.id)
+                    const owned = inventory.find(
+                      (entry) => entry.shopItemId === item.id,
+                    )
                     const isCosmetic = type !== "water" && type !== "food"
                     const alreadyOwned = isCosmetic && !!owned
                     const canAfford = stars >= item.price
                     return (
-                      <div key={item.id} className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/40 p-3">
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/40 p-3"
+                      >
                         <span className="text-3xl">{item.emoji}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-foreground">{item.name}</p>
-                          {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                          <p className="font-bold text-foreground">
+                            {item.name}
+                          </p>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground">
+                              {item.description}
+                            </p>
+                          )}
                           {item.restoreAmount > 0 && (
-                            <p className="text-xs font-semibold text-emerald-600">Restaura {item.restoreAmount}</p>
+                            <p className="text-xs font-semibold text-emerald-600">
+                              Restaura {item.restoreAmount}
+                            </p>
                           )}
                         </div>
                         <button
@@ -405,7 +470,8 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
                             "Já é seu!"
                           ) : (
                             <>
-                              {item.price} <Star className="h-4 w-4 fill-yellow-100 text-yellow-100" />
+                              {item.price}{" "}
+                              <Star className="h-4 w-4 fill-yellow-100 text-yellow-100" />
                             </>
                           )}
                         </button>
@@ -422,7 +488,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
       {/* ============ ARMÁRIO (cosméticos) ============ */}
       {view === "closet" && (
         <div className="rounded-2xl bg-card p-4 shadow-lg">
-          <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">Seus itens</p>
+          <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">
+            Seus itens
+          </p>
           {cosmetics.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               Nenhum item ainda — visite a Loja Botânica! 🛍️
@@ -430,7 +498,10 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
           ) : (
             <div className="space-y-2">
               {cosmetics.map((item) => (
-                <div key={inventoryKey(item)} className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/40 p-3">
+                <div
+                  key={inventoryKey(item)}
+                  className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/40 p-3"
+                >
                   <span className="text-3xl">{item.emoji}</span>
                   <div className="flex-1">
                     <p className="font-bold text-foreground">{item.name}</p>
@@ -442,7 +513,9 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
                   <button
                     onClick={() => handleEquip(item)}
                     className={`shrink-0 rounded-xl px-3 py-2 text-sm font-black shadow transition-transform hover:scale-105 ${
-                      item.equipped ? "bg-purple-500 text-white" : "bg-purple-100 text-purple-700"
+                      item.equipped
+                        ? "bg-purple-500 text-white"
+                        : "bg-purple-100 text-purple-700"
                     }`}
                   >
                     {item.equipped ? "Equipado ✓" : "Equipar"}
@@ -473,14 +546,24 @@ function LevelBar({
   return (
     <div className="flex items-center gap-2">
       {icon}
-      <span className={`w-16 text-xs font-bold ${dark ? "text-white/80" : "text-slate-600"}`}>{label}</span>
-      <div className={`h-4 flex-1 overflow-hidden rounded-full ${dark ? "bg-white/20" : "bg-white/70"}`}>
+      <span
+        className={`w-16 text-xs font-bold ${dark ? "text-white/80" : "text-slate-600"}`}
+      >
+        {label}
+      </span>
+      <div
+        className={`h-4 flex-1 overflow-hidden rounded-full ${dark ? "bg-white/20" : "bg-white/70"}`}
+      >
         <div
           className={`h-full rounded-full transition-all duration-700 ${barClass}`}
           style={{ width: `${value}%` }}
         />
       </div>
-      <span className={`w-8 text-right text-xs font-black ${dark ? "text-white" : "text-slate-600"}`}>{value}</span>
+      <span
+        className={`w-8 text-right text-xs font-black ${dark ? "text-white" : "text-slate-600"}`}
+      >
+        {value}
+      </span>
     </div>
   )
 }

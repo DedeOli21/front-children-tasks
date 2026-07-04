@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import Image from "next/image"
 import { toast } from "sonner"
 import { StarPanel } from "@/components/star-panel"
 import { TaskList } from "@/components/task-list"
@@ -444,9 +445,19 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-gradient-to-r from-primary to-emerald-500 px-4 py-4 shadow-lg">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-black text-primary-foreground drop-shadow-md">
-            Quadro de Recompensas de {childName}
-          </h1>
+          <div className="flex min-w-0 items-center gap-3">
+            <Image
+              src="/assets/pet_avatar_icon.jpg"
+              alt=""
+              width={44}
+              height={44}
+              priority
+              className="h-11 w-11 shrink-0 rounded-full border-2 border-white/70 object-cover shadow-md"
+            />
+            <h1 className="min-w-0 text-lg font-black text-primary-foreground drop-shadow-md">
+              Quadro de Recompensas de {childName}
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
             <button

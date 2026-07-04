@@ -6,22 +6,44 @@ import { AnimatePresence, motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 type BackgroundKey = "bedroom" | "backyard" | "bg_bedroom" | "bg_backyard"
+export type PetSpeciesKey = "dog" | "cat"
 
 export interface VirtualPetStageProps {
   streak: number
   isPremium?: boolean
   isCelebrating?: boolean
+  isSick?: boolean
   currentBackground?: string | null
+  species?: PetSpeciesKey | string | null
   petName?: string
   className?: string
   children?: ReactNode
 }
 
-const PET_IMAGES = {
-  idle: "/assets/idle_happy.jpg",
-  premium: "/assets/equipped_premium.jpg",
-  sad: "/assets/sad_broken.jpg",
-  celebration: "/assets/celebration.jpg",
+const PET_IMAGES: Record<
+  PetSpeciesKey,
+  {
+    idle: string
+    premium: string
+    sad: string
+    sick: string
+    celebration: string
+  }
+> = {
+  dog: {
+    idle: "/assets/idle_happy.jpg",
+    premium: "/assets/equipped_premium.jpg",
+    sad: "/assets/sad_broken.jpg",
+    sick: "/assets/dog_sick.jpg",
+    celebration: "/assets/celebration.jpg",
+  },
+  cat: {
+    idle: "/assets/cat_idle_happy.jpg",
+    premium: "/assets/cat_equipped_premium.jpg",
+    sad: "/assets/cat_sad_broken.jpg",
+    sick: "/assets/cat_sad_broken.jpg",
+    celebration: "/assets/cat_celebration.jpg",
+  },
 } as const
 
 const BACKGROUND_IMAGES: Record<BackgroundKey, string> = {
@@ -40,19 +62,45 @@ function resolveBackground(currentBackground?: string | null) {
   )
 }
 
-function resolvePetImage({
+export function resolvePetSpecies(species?: string | null): PetSpeciesKey {
+  if (!species) return "dog"
+  const normalized = species.toLowerCase()
+  if (
+    normalized.includes("cat") ||
+    normalized.includes("gato") ||
+    normalized.includes("felino")
+  )
+    return "cat"
+  return "dog"
+}
+
+export function resolvePetImage({
   streak,
   isPremium,
   isCelebrating,
-}: Required<Pick<VirtualPetStageProps, "streak" | "isPremium" | "isCelebrating">>) {
-  if (streak === 0) return PET_IMAGES.sad
-  if (isCelebrating) return PET_IMAGES.celebration
-  if (isPremium) return PET_IMAGES.premium
-  return PET_IMAGES.idle
+  isSick,
+  species,
+}: Required<
+  Pick<
+    VirtualPetStageProps,
+    "streak" | "isPremium" | "isCelebrating" | "isSick"
+  >
+> &
+  Pick<VirtualPetStageProps, "species">) {
+  const images = PET_IMAGES[resolvePetSpecies(species)]
+  if (isSick) return images.sick
+  if (streak === 0) return images.sad
+  if (isCelebrating) return images.celebration
+  if (isPremium) return images.premium
+  return images.idle
 }
 
-function resolveMotion(streak: number, isCelebrating: boolean) {
-  if (streak === 0) {
+function resolveMotion(
+  streak: number,
+  isCelebrating: boolean,
+  isSick: boolean,
+) {
+  if (streak === 0 || isSick) {
     return {
       animate: { y: 0, scale: 0.96, rotate: -1 },
       transition: { duration: 0.35, ease: "easeOut" as const },
@@ -76,7 +124,9 @@ export function VirtualPetStage({
   streak,
   isPremium = false,
   isCelebrating = false,
+  isSick = false,
   currentBackground = "bedroom",
+  species = "dog",
   petName = "Pet",
   className,
   children,
@@ -86,8 +136,10 @@ export function VirtualPetStage({
     streak: safeStreak,
     isPremium,
     isCelebrating,
+    isSick,
+    species,
   })
-  const motionState = resolveMotion(safeStreak, isCelebrating)
+  const motionState = resolveMotion(safeStreak, isCelebrating, isSick)
 
   return (
     <section
@@ -126,7 +178,7 @@ export function VirtualPetStage({
             transition={motionState.transition}
             className="relative h-[235px] w-[235px] sm:h-[280px] sm:w-[280px]"
           >
-            {isCelebrating && safeStreak > 0 ? (
+            {isCelebrating && safeStreak > 0 && !isSick ? (
               <motion.div
                 className="absolute inset-4 rounded-full bg-amber-300/45 blur-3xl"
                 animate={{ opacity: [0.35, 0.8, 0.35], scale: [0.9, 1.1, 0.9] }}

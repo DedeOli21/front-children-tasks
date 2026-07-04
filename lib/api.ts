@@ -1372,6 +1372,7 @@ export interface VirtualPet {
   skin: PetCosmetic | null;
   background: PetCosmetic | null;
   effect: PetCosmetic | null;
+  message?: string;
 }
 
 export interface PetShopItem {
@@ -1415,6 +1416,12 @@ export const petApi = {
     fetchWithAuth("/api/pet/name", {
       method: "PATCH",
       body: JSON.stringify({ name }),
+    }),
+
+  chooseSpecies: (species: "dog" | "cat"): Promise<VirtualPet> =>
+    fetchWithAuth("/api/pet/species", {
+      method: "PATCH",
+      body: JSON.stringify({ species }),
     }),
 
   care: (

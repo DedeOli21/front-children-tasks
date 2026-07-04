@@ -140,7 +140,7 @@ export function PetCloset({ items, onEquip }: PetClosetProps) {
 
       {items.length === 0 ? (
         <p className="py-4 text-center text-sm text-muted-foreground">
-          Nenhum item ainda — visite a Loja Botânica!
+          Nenhum item ainda — visite a Loja do Pet!
         </p>
       ) : (
         <div className="space-y-4">

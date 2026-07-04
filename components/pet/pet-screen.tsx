@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Image from "next/image"
 import { toast } from "sonner"
 import {
   Loader2,
@@ -34,17 +35,17 @@ import {
 import { PetCloset } from "@/components/pet/pet-closet"
 
 const STAGE_LABELS: Record<VirtualPet["stage"], string> = {
-  seed: "Sementinha",
-  sprout: "Brotinho",
+  seed: "Começando",
+  sprout: "Animado",
   growing: "Crescendo!",
-  blooming: "Floresceu! 🎉",
+  blooming: "Campeão!",
 }
 
 const MOOD_MESSAGES: Record<VirtualPet["mood"], string> = {
-  happy: "Sua plantinha está feliz! 💚",
-  thirsty: "Ela está com sede... dá uma aguinha? 💧",
-  hungry: "Barriguinha roncando! Que tal um adubo? 🌰",
-  sad: "Ela precisa de você! 🥺",
+  happy: "Seu pet está feliz! 💚",
+  thirsty: "Seu pet está com sede... dá uma aguinha? 💧",
+  hungry: "Barriguinha roncando! Que tal um lanchinho? 🌰",
+  sad: "Seu pet precisa de você! 🥺",
 }
 
 const TYPE_LABELS: Record<ShopItemType, string> = {
@@ -114,7 +115,7 @@ export function PetScreen({
       setInventory(inventoryData)
       setShop(shopData)
     } catch {
-      toast.error("Não foi possível carregar sua plantinha.")
+      toast.error("Não foi possível carregar seu pet.")
     } finally {
       setIsLoading(false)
     }
@@ -160,7 +161,7 @@ export function PetScreen({
           )
           .filter((entry) => entry.quantity > 0),
       )
-      // Planta reage: som + respingo + pulinho feliz
+      // Pet reage: som + respingo + pulinho feliz
       if (item.type === "water") playWaterSound()
       else playEatSound()
       setCareEmoji(item.type === "water" ? "💧" : "😋")
@@ -225,6 +226,21 @@ export function PetScreen({
       toast.success(result.message)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Nome inválido")
+    }
+  }
+
+  const handleSpeciesChange = async (nextSpecies: PetSpeciesKey) => {
+    if (species === nextSpecies) return
+
+    try {
+      const updated = await petApi.chooseSpecies(nextSpecies)
+      setPet(updated)
+      playBubbleSound()
+      toast.success(updated.message ?? "Pet atualizado!")
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Não foi possível trocar o pet",
+      )
     }
   }
 
@@ -306,6 +322,45 @@ export function PetScreen({
         </div>
       </VirtualPetStage>
 
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          {
+            key: "dog" as const,
+            label: "Cachorro",
+            image: "/assets/pet_avatar_icon.jpg",
+          },
+          {
+            key: "cat" as const,
+            label: "Gatinho",
+            image: "/assets/cat_idle_happy.jpg",
+          },
+        ].map((option) => {
+          const selected = species === option.key
+          return (
+            <button
+              key={option.key}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => handleSpeciesChange(option.key)}
+              className={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left shadow transition-transform hover:scale-[1.01] active:scale-[0.98] ${
+                selected
+                  ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                  : "border-border bg-card text-foreground"
+              }`}
+            >
+              <Image
+                src={option.image}
+                alt=""
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-xl object-cover"
+              />
+              <span className="font-black">{option.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
       {pet.equippedAttachments?.length > 0 && (
         <div className="flex flex-wrap justify-center gap-1.5">
           {pet.equippedAttachments.map((item) => (
@@ -322,7 +377,7 @@ export function PetScreen({
       {pet.sick ? (
         <div className="rounded-xl bg-red-50 p-3 text-center">
           <p className="text-sm font-bold text-red-500">
-            Sua plantinha está doente! As tarefas de ontem ficaram
+            Seu pet está tristinho! As tarefas de ontem ficaram
             incompletas...
           </p>
           <p className="text-xs font-semibold text-red-400">
@@ -331,8 +386,7 @@ export function PetScreen({
         </div>
       ) : pet.wilted ? (
         <p className="text-center text-sm font-bold text-red-500">
-          Ela murchou com a quebra da sequência. Complete os combinados para
-          replantar.
+          Ele sentiu a quebra da sequência. Complete os combinados para animar seu pet.
         </p>
       ) : null}
 
@@ -362,7 +416,7 @@ export function PetScreen({
       {consumables.length > 0 && (
         <div className="rounded-2xl bg-card p-4 shadow-lg">
           <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">
-            Cuidar da plantinha
+            Cuidar do pet
           </p>
           <div className="flex flex-wrap gap-2">
             {consumables.map((item) => (
@@ -393,7 +447,7 @@ export function PetScreen({
           }`}
         >
           <ShoppingBag className="h-5 w-5" />
-          Loja Botânica
+          Loja do Pet
         </button>
         <button
           onClick={() => setView(view === "closet" ? "pet" : "closet")}

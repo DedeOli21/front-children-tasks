@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
-import { Loader2, Plus, Sprout, Trash2, X } from "lucide-react"
+import { Loader2, PawPrint, Plus, Trash2, X } from "lucide-react"
 import { SmartTaskInput } from "@/components/parent/smart-task-input"
 import { petApi, settingsApi, type PetShopItem, type ShopItemType, type FamilySettings } from "@/lib/api"
 
@@ -57,7 +57,7 @@ export function BotanicEconomy() {
     <div className="space-y-4">
       <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4 shadow-lg">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
-          <Sprout className="h-6 w-6 text-emerald-500" />
+          <PawPrint className="h-6 w-6 text-emerald-500" />
         </div>
         <div className="flex-1">
           <p className="text-lg font-bold text-emerald-700">Loja do Pet</p>

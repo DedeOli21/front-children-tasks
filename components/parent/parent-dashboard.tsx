@@ -18,7 +18,7 @@ import {
   RotateCcw,
   Minus,
   X,
-  Sprout,
+  PawPrint,
 } from "lucide-react"
 import { ControlHub } from "@/components/parent/control-hub"
 import { BotanicEconomy } from "@/components/parent/botanic-economy"
@@ -810,7 +810,7 @@ export function ParentDashboard({
         {(
           [
             { id: "monitor", label: "Acompanhar", icon: Users },
-            { id: "botanic", label: "Loja 🐾", icon: Sprout },
+            { id: "botanic", label: "Loja 🐾", icon: PawPrint },
             { id: "reports", label: "Escola", icon: GraduationCap },
             { id: "history", label: "Histórico", icon: ClipboardList },
             { id: "manage", label: "Gerenciar", icon: Settings },

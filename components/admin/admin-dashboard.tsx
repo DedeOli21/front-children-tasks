@@ -701,7 +701,7 @@ export function RewardsAdmin({
                 className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 font-semibold focus:border-amber-400 focus:outline-none"
               >
                 <option value="privilege">Privilégio</option>
-                <option value="streak_freeze">Regador Mágico</option>
+                <option value="streak_freeze">Escudo Mágico</option>
               </select>
             </div>
             <div className="flex gap-2">

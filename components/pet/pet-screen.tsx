@@ -21,14 +21,7 @@ import {
   type PetInventoryItem,
   type ShopItemType,
 } from "@/lib/api"
-
-// Visual da planta por estágio (quando não há skin equipada)
-const STAGE_EMOJI: Record<VirtualPet["stage"], string> = {
-  seed: "🌰",
-  sprout: "🌱",
-  growing: "🪴",
-  blooming: "🌸",
-}
+import { VirtualPetStage } from "@/components/pet/virtual-pet-stage"
 
 const STAGE_LABELS: Record<VirtualPet["stage"], string> = {
   seed: "Sementinha",
@@ -42,20 +35,6 @@ const MOOD_MESSAGES: Record<VirtualPet["mood"], string> = {
   thirsty: "Ela está com sede... dá uma aguinha? 💧",
   hungry: "Barriguinha roncando! Que tal um adubo? 🌰",
   sad: "Ela precisa de você! 🥺",
-}
-
-// Cenário por emoji do background equipado
-function sceneClasses(background: VirtualPet["background"]): string {
-  switch (background?.emoji) {
-    case "🛏️":
-      return "from-orange-100 via-amber-50 to-yellow-100"
-    case "🏡":
-      return "from-emerald-100 via-green-50 to-lime-100"
-    case "🌌":
-      return "from-indigo-900 via-purple-900 to-slate-900"
-    default:
-      return "from-sky-100 via-cyan-50 to-emerald-50"
-  }
 }
 
 const TYPE_LABELS: Record<ShopItemType, string> = {
@@ -84,6 +63,17 @@ function equipTargetId(item: PetInventoryItem): string | null {
 
 function itemTypeLabel(type: PetInventoryItem["type"]): string {
   return INVENTORY_TYPE_LABELS[type] ?? "Cosmético"
+}
+
+function petBackgroundKey(pet: VirtualPet): string {
+  if (pet.equippedItems?.background) return pet.equippedItems.background
+  if (pet.background?.emoji === "🏡") return "backyard"
+  return "bedroom"
+}
+
+function petVisualStreak(pet: VirtualPet): number {
+  if (pet.sick || pet.wilted || pet.animationState === "sad") return 0
+  return Math.max(1, pet.level - 1)
 }
 
 interface PetScreenProps {
@@ -224,142 +214,111 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
     )
   }
 
-  const plantEmoji = pet.sick || pet.wilted ? "🥀" : (pet.skin?.emoji ?? STAGE_EMOJI[pet.stage])
-  const isSpace = pet.background?.emoji === "🌌"
+  const currentBackground = petBackgroundKey(pet)
+  const visualStreak = petVisualStreak(pet)
+  const hasPremiumAttachment =
+    pet.equippedAttachments?.some((item) => item.isPremium) ?? false
 
   return (
     <div className="space-y-4">
-      {/* ============ A CENA ============ */}
-      <div
-        className={`relative overflow-hidden rounded-3xl bg-gradient-to-b p-6 shadow-xl ${sceneClasses(pet.background)}`}
+      <VirtualPetStage
+        streak={visualStreak}
+        isPremium={hasPremiumAttachment}
+        isCelebrating={isReacting}
+        currentBackground={currentBackground}
+        petName={pet.name}
       >
-        {/* Efeito equipado: bolhas de sabão ou vagalumes */}
-        {pet.effect?.emoji === "🫧" && (
-          <div className="pointer-events-none absolute inset-0">
-            {[...Array(7)].map((_, i) => (
-              <span
-                key={i}
-                className="animate-bubble-rise absolute bottom-6 text-2xl"
-                style={{ left: `${10 + i * 12}%`, animationDelay: `${i * 0.6}s` }}
-              >
-                🫧
-              </span>
-            ))}
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-white/85 px-3 py-2 shadow">
+            {isRenaming ? (
+              <form onSubmit={handleRename} className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  minLength={2}
+                  maxLength={20}
+                  className="w-40 rounded-xl border-2 border-emerald-300 bg-white/90 px-3 py-1 text-center font-black text-slate-700 focus:outline-none"
+                />
+                <button type="submit" className="rounded-lg bg-emerald-500 p-1.5 text-white">
+                  <Check className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => setIsRenaming(false)} className="rounded-lg bg-slate-300 p-1.5 text-slate-600">
+                  <X className="h-4 w-4" />
+                </button>
+              </form>
+            ) : (
+              <>
+                <h2 className="text-xl font-black text-slate-700 drop-shadow">
+                  {pet.name}
+                </h2>
+                <button
+                  onClick={() => {
+                    setNewName(pet.name)
+                    setIsRenaming(true)
+                  }}
+                  className="rounded-lg p-1 text-slate-400 hover:text-slate-600"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </>
+            )}
           </div>
-        )}
-        {pet.effect?.emoji === "✨" && (
-          <div className="pointer-events-none absolute inset-0">
-            {[...Array(6)].map((_, i) => (
-              <span
-                key={i}
-                className="animate-firefly absolute text-lg"
-                style={{ left: `${12 + i * 14}%`, top: `${20 + (i % 3) * 22}%`, animationDelay: `${i * 0.8}s` }}
-              >
-                ✨
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Nome da planta */}
-        <div className="relative z-10 flex items-center justify-center gap-2">
-          {isRenaming ? (
-            <form onSubmit={handleRename} className="flex items-center gap-1">
-              <input
-                autoFocus
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                minLength={2}
-                maxLength={20}
-                className="w-40 rounded-xl border-2 border-emerald-300 bg-white/90 px-3 py-1 text-center font-black text-slate-700 focus:outline-none"
-              />
-              <button type="submit" className="rounded-lg bg-emerald-500 p-1.5 text-white">
-                <Check className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={() => setIsRenaming(false)} className="rounded-lg bg-slate-300 p-1.5 text-slate-600">
-                <X className="h-4 w-4" />
-              </button>
-            </form>
-          ) : (
-            <>
-              <h2 className={`text-xl font-black drop-shadow ${isSpace ? "text-white" : "text-slate-700"}`}>
-                {pet.name}
-              </h2>
-              <button
-                onClick={() => {
-                  setNewName(pet.name)
-                  setIsRenaming(true)
-                }}
-                className={`rounded-lg p-1 ${isSpace ? "text-white/70 hover:text-white" : "text-slate-400 hover:text-slate-600"}`}
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            </>
-          )}
-        </div>
-        <p className={`relative z-10 text-center text-xs font-bold ${isSpace ? "text-white/70" : "text-slate-500"}`}>
-          {STAGE_LABELS[pet.stage]} · {pet.xp} XP
-        </p>
-
-        {/* A planta */}
-        <div className="relative z-10 flex h-44 items-end justify-center">
-          {careEmoji && <span className="animate-care-splash absolute top-4 text-4xl">{careEmoji}</span>}
-          <span
-            className={`text-8xl drop-shadow-lg ${isReacting ? "animate-plant-happy" : "animate-plant-sway"}`}
-            role="img"
-            aria-label={`Plantinha ${STAGE_LABELS[pet.stage]}`}
-          >
-            {plantEmoji}
-          </span>
-        </div>
-
-        {pet.equippedAttachments?.length > 0 && (
-          <div className="relative z-10 mt-2 flex flex-wrap justify-center gap-1.5">
-            {pet.equippedAttachments.map((item) => (
-              <span
-                key={item.inventoryItemId}
-                className="rounded-full bg-white/80 px-2 py-1 text-xs font-black text-slate-600 shadow-sm"
-              >
-                {item.emoji} {item.name}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {pet.sick ? (
-          <div className="relative z-10 mt-1 rounded-xl bg-red-50/90 p-2 text-center">
-            <p className="text-sm font-bold text-red-500">
-              🌡️ Sua plantinha está doente! As tarefas de ontem ficaram incompletas...
-            </p>
-            <p className="text-xs font-semibold text-red-400">
-              Complete todos os combinados de hoje para curá-la 💊
-            </p>
-          </div>
-        ) : pet.wilted ? (
-          <p className="relative z-10 mt-1 text-center text-sm font-bold text-red-500">
-            Ela murchou com a quebra da sequência... complete os combinados para replantar! 🌱
+          <p className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-500 shadow">
+            Lv. {pet.level} · {STAGE_LABELS[pet.stage]} · {pet.xp} XP
           </p>
-        ) : null}
+          {careEmoji ? (
+            <span className="animate-care-splash text-4xl">{careEmoji}</span>
+          ) : null}
+        </div>
+      </VirtualPetStage>
 
-        {/* Barras de sobrevivência */}
-        <div className="relative z-10 mt-4 space-y-2">
+      {pet.equippedAttachments?.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {pet.equippedAttachments.map((item) => (
+            <span
+              key={item.inventoryItemId}
+              className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-600 shadow-sm"
+            >
+              {item.emoji} {item.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {pet.sick ? (
+        <div className="rounded-xl bg-red-50 p-3 text-center">
+          <p className="text-sm font-bold text-red-500">
+            Sua plantinha está doente! As tarefas de ontem ficaram incompletas...
+          </p>
+          <p className="text-xs font-semibold text-red-400">
+            Complete todos os combinados de hoje para curá-la.
+          </p>
+        </div>
+      ) : pet.wilted ? (
+        <p className="text-center text-sm font-bold text-red-500">
+          Ela murchou com a quebra da sequência. Complete os combinados para replantar.
+        </p>
+      ) : null}
+
+      <div className="rounded-2xl bg-card p-4 shadow-lg">
+        <div className="space-y-2">
           <LevelBar
             icon={<Droplets className="h-4 w-4 text-sky-500" />}
             label="Água"
             value={pet.waterLevel}
             barClass="bg-gradient-to-r from-sky-400 to-cyan-400"
-            dark={isSpace}
+            dark={false}
           />
           <LevelBar
             icon={<Apple className="h-4 w-4 text-amber-600" />}
             label="Nutrição"
             value={pet.nutritionLevel}
             barClass="bg-gradient-to-r from-amber-400 to-orange-400"
-            dark={isSpace}
+            dark={false}
           />
         </div>
-
-        <p className={`relative z-10 mt-3 text-center text-sm font-semibold ${isSpace ? "text-white/80" : "text-slate-600"}`}>
+        <p className="mt-3 text-center text-sm font-semibold text-slate-600">
           {MOOD_MESSAGES[pet.mood]}
         </p>
       </div>

@@ -9,10 +9,11 @@ import { petApi, settingsApi, type PetShopItem, type ShopItemType, type FamilySe
 const TYPE_LABELS: Record<ShopItemType, string> = {
   water: "💧 Água",
   food: "🌰 Comida",
-  skin: "🐾 Mascote",
+  skin: "🐾 Legado",
   background: "🏡 Cenário",
   effect: "🫧 Efeito",
 }
+const PET_SHOP_TYPES: ShopItemType[] = ["water", "food", "background", "effect"]
 
 // Loja do Pet: o responsável gerencia os itens e preços.
 export function BotanicEconomy() {
@@ -50,8 +51,9 @@ export function BotanicEconomy() {
     )
   }
 
-  const standard = items.filter((item) => item.familyId === null)
-  const custom = items.filter((item) => item.familyId !== null)
+  const visibleItems = items.filter((item) => item.type !== "skin")
+  const standard = visibleItems.filter((item) => item.familyId === null)
+  const custom = visibleItems.filter((item) => item.familyId !== null)
 
   return (
     <div className="space-y-4">
@@ -145,7 +147,7 @@ function CreateItemModal({
 }) {
   const [type, setType] = useState<ShopItemType>("water")
   const [name, setName] = useState("")
-  const [emoji, setEmoji] = useState("🌱")
+  const [emoji, setEmoji] = useState("🐾")
   const [price, setPrice] = useState(5)
   const [restoreAmount, setRestoreAmount] = useState(30)
   const [error, setError] = useState("")
@@ -193,7 +195,7 @@ function CreateItemModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="grid grid-cols-5 gap-1">
-            {(Object.keys(TYPE_LABELS) as ShopItemType[]).map((option) => (
+            {PET_SHOP_TYPES.map((option) => (
               <button
                 key={option}
                 type="button"

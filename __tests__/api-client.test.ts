@@ -118,6 +118,19 @@ describe("cliente de API", () => {
     expect(options?.method).toBe("PATCH")
   })
 
+  it("escolha do mascote usa PATCH /api/pet/species", async () => {
+    const fetchMock = vi
+      .mocked(fetch)
+      .mockResolvedValue(mockJsonResponse({ modelKey: "cat_orange" }))
+
+    await petApi.chooseSpecies("cat")
+
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain("/api/pet/species")
+    expect(options?.method).toBe("PATCH")
+    expect(JSON.parse(String(options?.body))).toEqual({ species: "cat" })
+  })
+
   it("Super Iniciativa cria, lista pendentes e aprova com ajuste de estrelas", async () => {
     const fetchMock = vi
       .mocked(fetch)

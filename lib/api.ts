@@ -1269,7 +1269,7 @@ export const observationsApi = {
     fetchWithAuth(`/api/observations?childId=${childId}`),
 };
 
-// ============ PET VIRTUAL (Planta da Consistência) ============
+// ============ PET VIRTUAL ============
 export type PetStage = "seed" | "sprout" | "growing" | "blooming";
 export type PetMood = "happy" | "thirsty" | "hungry" | "sad";
 export type ShopItemType = "water" | "food" | "skin" | "background" | "effect";
@@ -1459,7 +1459,7 @@ export const petApi = {
   }> =>
     fetchWithAuth(`/api/pet/inventory/${itemId}/equip`, { method: "PATCH" }),
 
-  // Economia Botânica (responsável)
+  // Loja do Pet (responsável)
   createShopItem: (data: {
     type: ShopItemType;
     name: string;

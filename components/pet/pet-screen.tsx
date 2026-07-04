@@ -51,10 +51,11 @@ const MOOD_MESSAGES: Record<VirtualPet["mood"], string> = {
 const TYPE_LABELS: Record<ShopItemType, string> = {
   water: "Água",
   food: "Comida",
-  skin: "Espécies",
+  skin: "Legado",
   background: "Cenários",
   effect: "Efeitos",
 }
+const PET_SHOP_TYPES: ShopItemType[] = ["water", "food", "background", "effect"]
 
 function inventoryKey(item: PetInventoryItem): string {
   return item.inventoryItemId ?? item.petItemId ?? item.shopItemId ?? item.name
@@ -129,7 +130,7 @@ export function PetScreen({
     (i) => i.type === "water" || i.type === "food",
   )
   const cosmetics = inventory.filter(
-    (i) => i.type !== "water" && i.type !== "food",
+    (i) => i.type !== "water" && i.type !== "food" && i.type !== "skin",
   )
 
   const handleCare = async (item: PetInventoryItem) => {
@@ -465,9 +466,7 @@ export function PetScreen({
       {/* ============ LOJA ============ */}
       {view === "shop" && (
         <div className="space-y-3">
-          {(
-            ["water", "food", "skin", "background", "effect"] as ShopItemType[]
-          ).map((type) => {
+          {PET_SHOP_TYPES.map((type) => {
             const items = shop.filter((item) => item.type === type)
             if (items.length === 0) return null
             return (

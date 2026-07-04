@@ -23,6 +23,7 @@ import { MysteryPrizesAdmin } from "@/components/admin/mystery-prizes-admin"
 import { PenaltiesAdmin, RewardsAdmin, TasksAdmin } from "@/components/admin/admin-dashboard"
 import { RoutineManager } from "@/components/parent/routine-manager"
 import { RoutinePlanner } from "@/components/parent/routine-planner"
+import { SmartTaskInput } from "@/components/parent/smart-task-input"
 import { WeeklyAgenda } from "@/components/parent/weekly-agenda"
 import {
   eventsApi,
@@ -376,11 +377,14 @@ function SharedEconomyPanel({
               onChange={(e) => setGoalForm((prev) => ({ ...prev, emoji: e.target.value }))}
               className="rounded-lg border border-slate-200 px-3 py-2 text-center text-xl"
             />
-            <input
-              value={goalForm.title}
-              onChange={(e) => setGoalForm((prev) => ({ ...prev, title: e.target.value }))}
+            <SmartTaskInput
+              title={goalForm.title}
+              emoji={goalForm.emoji}
+              onTitleChange={(title) => setGoalForm((prev) => ({ ...prev, title }))}
+              onEmojiChange={(emoji) => setGoalForm((prev) => ({ ...prev, emoji }))}
               placeholder="Ex: Passeio no fim de semana"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-emerald-400"
+              inputClassName="h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold focus:border-emerald-400"
+              suggestionClassName="h-7 bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
             />
             <input
               type="number"
@@ -482,10 +486,14 @@ function SharedEconomyPanel({
               onChange={(e) => setEventForm((prev) => ({ ...prev, emoji: e.target.value }))}
               className="rounded-lg border border-slate-200 px-3 py-2 text-center text-xl"
             />
-            <input
-              value={eventForm.name}
-              onChange={(e) => setEventForm((prev) => ({ ...prev, name: e.target.value }))}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-amber-400"
+            <SmartTaskInput
+              title={eventForm.name}
+              emoji={eventForm.emoji}
+              onTitleChange={(name) => setEventForm((prev) => ({ ...prev, name }))}
+              onEmojiChange={(emoji) => setEventForm((prev) => ({ ...prev, emoji }))}
+              placeholder="Estrelas em Dobro"
+              inputClassName="h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold focus:border-amber-400"
+              suggestionClassName="h-7 bg-amber-100 text-amber-700 hover:bg-amber-200"
             />
             <select
               value={eventForm.multiplier}

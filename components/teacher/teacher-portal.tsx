@@ -23,6 +23,7 @@ import {
   type Mission,
   type MissionStatus,
 } from "@/lib/api"
+import { SmartTaskInput } from "@/components/parent/smart-task-input"
 import { MessagesPanel } from "@/components/shared/messages-panel"
 import { NotificationBell } from "@/components/shared/notification-bell"
 
@@ -489,6 +490,7 @@ interface TeacherMissionsProps {
 
 function TeacherMissions({ students, defaultStudentId, onFeedback }: TeacherMissionsProps) {
   const [title, setTitle] = useState("")
+  const [iconEmoji, setIconEmoji] = useState("📚")
   const [description, setDescription] = useState("")
   const [starsReward, setStarsReward] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -520,15 +522,21 @@ function TeacherMissions({ students, defaultStudentId, onFeedback }: TeacherMiss
       setFormError("Selecione pelo menos um aluno")
       return
     }
+    if (!title.trim()) {
+      setFormError("Informe o título da missão")
+      return
+    }
     setIsSending(true)
     try {
       await missionsApi.create({
         childIds: Array.from(selectedIds),
-        title,
+        title: title.trim(),
+        iconEmoji,
         description: description || undefined,
         starsReward,
       })
       setTitle("")
+      setIconEmoji("📚")
       setDescription("")
       setStarsReward(1)
       onFeedback(`Missão enviada para ${selectedIds.size} aluno(s)! 🚀`)
@@ -555,14 +563,26 @@ function TeacherMissions({ students, defaultStudentId, onFeedback }: TeacherMiss
           </div>
         )}
 
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          placeholder="Título (ex: Dever de Matemática)"
-          className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 focus:border-violet-400 focus:outline-none"
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={iconEmoji}
+            onChange={(e) => setIconEmoji(e.target.value)}
+            className="w-16 rounded-xl border-2 border-slate-200 bg-slate-50 px-2 py-3 text-center text-xl focus:border-violet-400 focus:outline-none"
+            aria-label="Emoji da missão"
+          />
+          <SmartTaskInput
+            title={title}
+            emoji={iconEmoji}
+            onTitleChange={setTitle}
+            onEmojiChange={setIconEmoji}
+            placeholder="Título (ex: Dever de Matemática)"
+            required
+            className="flex-1"
+            inputClassName="rounded-xl bg-slate-50 font-semibold focus:border-violet-400"
+            suggestionClassName="bg-violet-100 text-violet-700 hover:bg-violet-200"
+          />
+        </div>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Loader2, Plus, Sprout, Trash2, X } from "lucide-react"
+import { SmartTaskInput } from "@/components/parent/smart-task-input"
 import { petApi, settingsApi, type PetShopItem, type ShopItemType, type FamilySettings } from "@/lib/api"
 
 const TYPE_LABELS: Record<ShopItemType, string> = {
@@ -155,11 +156,15 @@ function CreateItemModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    if (!name.trim()) {
+      setError("Informe o nome do item")
+      return
+    }
     setIsSaving(true)
     try {
       const created = await petApi.createShopItem({
         type,
-        name,
+        name: name.trim(),
         emoji,
         price,
         restoreAmount: isConsumable ? restoreAmount : undefined,
@@ -211,13 +216,16 @@ function CreateItemModal({
               onChange={(e) => setEmoji(e.target.value)}
               className="w-16 rounded-xl border-2 border-slate-200 bg-slate-50 px-2 py-3 text-center text-xl focus:border-emerald-400 focus:outline-none"
             />
-            <input
-              type="text"
+            <SmartTaskInput
+              title={name}
+              emoji={emoji}
+              onTitleChange={setName}
+              onEmojiChange={setEmoji}
               placeholder="Nome do item"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
               required
-              className="flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none"
+              className="flex-1"
+              inputClassName="rounded-xl bg-slate-50 font-semibold focus:border-emerald-400"
+              suggestionClassName="bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
             />
           </div>
 

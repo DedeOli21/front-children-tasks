@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Plus, Pencil, Trash2, X, Check, Package } from "lucide-react"
+import { SmartTaskInput } from "@/components/parent/smart-task-input"
 import { mysteryBoxApi, type MysteryPrize } from "@/lib/api"
 
 interface MysteryPrizesAdminProps {
@@ -133,12 +134,14 @@ export function MysteryPrizesAdmin({ prizes, onCreate, onUpdate, onDelete }: Mys
             </div>
             <div>
               <label className="mb-1 block text-sm font-semibold text-slate-600">Nome do Prêmio</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              <SmartTaskInput
+                title={formData.name}
+                emoji={formData.emoji}
+                onTitleChange={(name) => setFormData({ ...formData, name })}
+                onEmojiChange={(emoji) => setFormData({ ...formData, emoji })}
                 placeholder="Ex: Filme especial"
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-pink-400 focus:outline-none"
+                inputClassName="rounded-xl focus:border-pink-400"
+                suggestionClassName="bg-pink-100 text-pink-700 hover:bg-pink-200"
               />
             </div>
             <div>
@@ -248,4 +251,3 @@ export function MysteryPrizesAdmin({ prizes, onCreate, onUpdate, onDelete }: Mys
     </div>
   )
 }
-

@@ -22,6 +22,7 @@ import type {
   RoutineItem,
   MysteryPrize,
 } from "@/lib/api"
+import { SmartTaskInput } from "@/components/parent/smart-task-input"
 import { HistoryReport } from "./history-report"
 import { MysteryPrizesAdmin } from "./mystery-prizes-admin"
 
@@ -303,14 +304,13 @@ export function TasksAdmin({
               <label className="mb-1 block text-sm font-semibold text-slate-600">
                 Titulo
               </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
+              <SmartTaskInput
+                title={formData.title}
+                emoji={formData.emoji}
+                onTitleChange={(title) => setFormData({ ...formData, title })}
+                onEmojiChange={(emoji) => setFormData({ ...formData, emoji })}
                 placeholder="Ex: Fazer o dever sem brigar"
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-emerald-400 focus:outline-none"
+                inputClassName="rounded-xl focus:border-emerald-400"
               />
             </div>
             <div className="flex gap-2">
@@ -466,14 +466,14 @@ export function PenaltiesAdmin({
               <label className="mb-1 block text-sm font-semibold text-slate-600">
                 Titulo
               </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
+              <SmartTaskInput
+                title={formData.title}
+                emoji={formData.emoji}
+                onTitleChange={(title) => setFormData({ ...formData, title })}
+                onEmojiChange={(emoji) => setFormData({ ...formData, emoji })}
                 placeholder="Ex: Brigou ou bateu"
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-red-400 focus:outline-none"
+                inputClassName="rounded-xl focus:border-red-400"
+                suggestionClassName="bg-red-100 text-red-700 hover:bg-red-200"
               />
             </div>
             <div className="flex gap-2">
@@ -662,14 +662,14 @@ export function RewardsAdmin({
               <label className="mb-1 block text-sm font-semibold text-slate-600">
                 Titulo
               </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
+              <SmartTaskInput
+                title={formData.title}
+                emoji={formData.emoji}
+                onTitleChange={(title) => setFormData({ ...formData, title })}
+                onEmojiChange={(emoji) => setFormData({ ...formData, emoji })}
                 placeholder="Ex: Escolher o filme"
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-amber-400 focus:outline-none"
+                inputClassName="rounded-xl focus:border-amber-400"
+                suggestionClassName="bg-amber-100 text-amber-700 hover:bg-amber-200"
               />
             </div>
             <div>
@@ -899,14 +899,14 @@ export function RoutinesAdmin({
               <label className="mb-1 block text-sm font-semibold text-slate-600">
                 Titulo
               </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
+              <SmartTaskInput
+                title={formData.title}
+                emoji={formData.emoji}
+                onTitleChange={(title) => setFormData({ ...formData, title })}
+                onEmojiChange={(emoji) => setFormData({ ...formData, emoji })}
                 placeholder="Ex: Acordar"
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 focus:border-indigo-400 focus:outline-none"
+                inputClassName="rounded-xl focus:border-indigo-400"
+                suggestionClassName="bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
               />
             </div>
             <div className="flex gap-2">

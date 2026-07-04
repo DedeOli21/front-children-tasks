@@ -27,6 +27,7 @@ import {
   type Child,
   type ActiveTask,
 } from "@/lib/api";
+import { SmartTaskInput } from "@/components/parent/smart-task-input";
 import { TaskTemplateComposer } from "@/components/parent/task-template-composer";
 
 // Item selecionado no painel lateral, aguardando um clique/drop em um dia
@@ -773,9 +774,17 @@ function CreateTemplateModal({ onClose, onCreated }: CreateTemplateModalProps) {
       setError("Adicione pelo menos uma tarefa");
       return;
     }
+    if (!name.trim()) {
+      setError("Informe o nome do template");
+      return;
+    }
     setIsSaving(true);
     try {
-      const created = await templatesApi.create({ name, emoji, tasks });
+      const created = await templatesApi.create({
+        name: name.trim(),
+        emoji,
+        tasks,
+      });
       onCreated(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar template");
@@ -813,13 +822,16 @@ function CreateTemplateModal({ onClose, onCreated }: CreateTemplateModalProps) {
               onChange={(e) => setEmoji(e.target.value)}
               className="w-16 rounded-xl border-2 border-slate-200 bg-slate-50 px-2 py-3 text-center text-xl focus:border-emerald-400 focus:outline-none"
             />
-            <input
-              type="text"
-              placeholder="Nome (ex: Manhã de Escola)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+            <SmartTaskInput
+              title={name}
+              emoji={emoji}
+              onTitleChange={setName}
+              onEmojiChange={setEmoji}
+              placeholder="Nome (ex: Manha de Escola)"
               required
-              className="flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none"
+              className="flex-1"
+              inputClassName="rounded-xl bg-slate-50 font-semibold focus:border-emerald-400"
+              suggestionClassName="bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
             />
           </div>
 
@@ -836,12 +848,15 @@ function CreateTemplateModal({ onClose, onCreated }: CreateTemplateModalProps) {
                 }
                 className="w-14 rounded-xl border-2 border-slate-200 bg-slate-50 px-1 py-2 text-center focus:border-emerald-400 focus:outline-none"
               />
-              <input
-                type="text"
+              <SmartTaskInput
+                title={item.title}
+                emoji={item.iconEmoji}
+                onTitleChange={(title) => updateItem(index, { title })}
+                onEmojiChange={(iconEmoji) => updateItem(index, { iconEmoji })}
                 placeholder={`Tarefa ${index + 1}`}
-                value={item.title}
-                onChange={(e) => updateItem(index, { title: e.target.value })}
-                className="flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-emerald-400 focus:outline-none"
+                className="flex-1"
+                inputClassName="h-10 rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold focus:border-emerald-400"
+                suggestionClassName="h-7 bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
               />
               <input
                 type="time"

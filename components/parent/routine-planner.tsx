@@ -39,6 +39,7 @@ interface RoutinePlannerProps {
   initialView?: "plan" | "review";
   // Notifica o dashboard quando uma aprovação altera o saldo de estrelas
   onStarsChanged: (childId: string, stars: number) => void;
+  onPlanningChanged?: () => void;
 }
 
 // Próximos 7 dias a partir de hoje
@@ -71,6 +72,7 @@ export function RoutinePlanner({
   selectedChildId,
   initialView = "plan",
   onStarsChanged,
+  onPlanningChanged,
 }: RoutinePlannerProps) {
   const [view, setView] = useState<"plan" | "review">(initialView);
   const [isLoading, setIsLoading] = useState(true);
@@ -282,6 +284,7 @@ export function RoutinePlanner({
     try {
       await templatesApi.remove(id);
       setTemplates((prev) => prev.filter((t) => t.id !== id));
+      onPlanningChanged?.();
       if (selection?.type === "template" && selection.id === id)
         setSelection(null);
     } catch (err) {
@@ -479,6 +482,7 @@ export function RoutinePlanner({
             childName={selectedChild?.name}
             onCreated={() => {
               loadReview();
+              onPlanningChanged?.();
             }}
           />
 

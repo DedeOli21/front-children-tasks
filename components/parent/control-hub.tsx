@@ -21,7 +21,9 @@ import {
 import { HistoryReport } from "@/components/admin/history-report"
 import { MysteryPrizesAdmin } from "@/components/admin/mystery-prizes-admin"
 import { PenaltiesAdmin, RewardsAdmin, TasksAdmin } from "@/components/admin/admin-dashboard"
+import { RoutineManager } from "@/components/parent/routine-manager"
 import { RoutinePlanner } from "@/components/parent/routine-planner"
+import { WeeklyAgenda } from "@/components/parent/weekly-agenda"
 import {
   eventsApi,
   goalsApi,
@@ -60,6 +62,9 @@ interface ControlHubProps {
   onRewardCreate: (reward: Omit<Reward, "id">) => void | Promise<void>
   onRewardUpdate: (id: string, reward: Partial<Reward>) => void | Promise<void>
   onRewardDelete: (id: string) => void | Promise<void>
+  onRoutineCreate: (routine: Omit<RoutineItem, "id">) => void | Promise<void>
+  onRoutineUpdate: (id: string, routine: Partial<RoutineItem>) => void | Promise<void>
+  onRoutineDelete: (id: string) => void | Promise<void>
   onMysteryPrizeCreate: (prize: Omit<MysteryPrize, "id">) => void | Promise<void>
   onMysteryPrizeUpdate: (id: string, prize: Partial<MysteryPrize>) => void | Promise<void>
   onMysteryPrizeDelete: (id: string) => void | Promise<void>
@@ -74,6 +79,7 @@ export function ControlHub({
   tasks,
   penalties,
   rewards,
+  routines,
   mysteryPrizes,
   therapists,
   onBack,
@@ -87,6 +93,9 @@ export function ControlHub({
   onRewardCreate,
   onRewardUpdate,
   onRewardDelete,
+  onRoutineCreate,
+  onRoutineUpdate,
+  onRoutineDelete,
   onMysteryPrizeCreate,
   onMysteryPrizeUpdate,
   onMysteryPrizeDelete,
@@ -95,6 +104,7 @@ export function ControlHub({
 }: ControlHubProps) {
   const [activeTab, setActiveTab] = useState<HubTab>("approvals")
   const [economyTab, setEconomyTab] = useState<EconomyTab>("shop")
+  const [agendaRefreshKey, setAgendaRefreshKey] = useState(0)
 
   const tabs: { id: HubTab; label: string; icon: typeof Inbox }[] = [
     { id: "approvals", label: "Aprovações", icon: Inbox },
@@ -152,12 +162,28 @@ export function ControlHub({
 
         {activeTab === "planning" && (
           <div className="space-y-5">
+            <WeeklyAgenda
+              selectedChildId={selectedChildId}
+              routines={routines}
+              refreshKey={agendaRefreshKey}
+            />
+            <RoutineManager
+              selectedChildId={selectedChildId}
+              childName={selectedChild?.name}
+              routines={routines}
+              onCreate={onRoutineCreate}
+              onUpdate={onRoutineUpdate}
+              onDelete={onRoutineDelete}
+            />
             <RoutinePlanner
               key="hub-planning"
               children={childrenList}
               selectedChildId={selectedChildId}
               initialView="plan"
               onStarsChanged={onStarsChanged}
+              onPlanningChanged={() =>
+                setAgendaRefreshKey((current) => current + 1)
+              }
             />
             <TasksAdmin tasks={tasks} onCreate={onTaskCreate} onUpdate={onTaskUpdate} onDelete={onTaskDelete} />
           </div>

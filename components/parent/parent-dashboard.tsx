@@ -555,7 +555,10 @@ export function ParentDashboard({
 
   const handleRoutineCreate = async (routineData: Omit<RoutineItem, "id">) => {
     try {
-      const created = await routinesApi.create(routineData)
+      const created = await routinesApi.create({
+        ...routineData,
+        childId: routineData.childId ?? selectedChildId,
+      })
       setRoutines((prev) =>
         [...prev, created].sort((a, b) => a.time.localeCompare(b.time)),
       )
@@ -568,6 +571,7 @@ export function ParentDashboard({
     } catch (err) {
       console.error("Erro ao criar rotina:", err)
       toast.error("Erro ao criar rotina. Tente novamente.")
+      throw err
     }
   }
 
@@ -576,23 +580,24 @@ export function ParentDashboard({
     routineData: Partial<RoutineItem>,
   ) => {
     try {
-      await routinesApi.update(id, routineData)
+      const updated = await routinesApi.update(id, routineData)
       setRoutines((prev) =>
         prev
-          .map((r) => (r.id === id ? { ...r, ...routineData } : r))
+          .map((r) => (r.id === id ? updated : r))
           .sort((a, b) => a.time.localeCompare(b.time)),
       )
       queryClient.setQueryData<RoutineItem[]>(
         queryKeys.routines(selectedChildId),
         (prev = []) =>
           prev
-            .map((r) => (r.id === id ? { ...r, ...routineData } : r))
+            .map((r) => (r.id === id ? updated : r))
             .sort((a, b) => a.time.localeCompare(b.time)),
       )
       queryClient.invalidateQueries({ queryKey: ["routines"] })
     } catch (err) {
       console.error("Erro ao atualizar rotina:", err)
       toast.error("Erro ao atualizar rotina. Tente novamente.")
+      throw err
     }
   }
 
@@ -608,6 +613,7 @@ export function ParentDashboard({
     } catch (err) {
       console.error("Erro ao deletar rotina:", err)
       toast.error("Erro ao deletar rotina. Tente novamente.")
+      throw err
     }
   }
 
@@ -701,6 +707,9 @@ export function ParentDashboard({
           onRewardCreate={handleRewardCreate}
           onRewardUpdate={handleRewardUpdate}
           onRewardDelete={handleRewardDelete}
+          onRoutineCreate={handleRoutineCreate}
+          onRoutineUpdate={handleRoutineUpdate}
+          onRoutineDelete={handleRoutineDelete}
           onMysteryPrizeCreate={handleMysteryPrizeCreate}
           onMysteryPrizeUpdate={handleMysteryPrizeUpdate}
           onMysteryPrizeDelete={handleMysteryPrizeDelete}

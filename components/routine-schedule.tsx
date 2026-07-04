@@ -1,8 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sun, Moon, Clock, CheckCircle2, Loader2 } from "lucide-react"
-import { routinesApi, type RoutineItem } from "@/lib/api"
+import { routinesApi, type RecurrenceDay, type RoutineItem } from "@/lib/api"
+
+const WEEK_DAYS: RecurrenceDay[] = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+]
+
+function getTodayRecurrenceDay(): RecurrenceDay {
+  return WEEK_DAYS[new Date().getDay()] ?? "sunday"
+}
 
 interface RoutineScheduleProps {
   routines: RoutineItem[]
@@ -12,14 +26,25 @@ interface RoutineScheduleProps {
 export function RoutineSchedule({ routines, onRoutineToggle }: RoutineScheduleProps) {
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set())
+  const today = getTodayRecurrenceDay()
+  const todaysRoutines = useMemo(
+    () =>
+      routines.filter((routine) => {
+        const days = routine.recurrenceDays?.length
+          ? routine.recurrenceDays
+          : WEEK_DAYS
+        return days.includes(today)
+      }),
+    [routines, today],
+  )
 
   // Inicializa checkedItems com as rotinas já completadas hoje
   useEffect(() => {
-    const completedIds = routines
+    const completedIds = todaysRoutines
       .filter((r) => r.completedToday)
       .map((r) => r.id)
     setCheckedItems(new Set(completedIds))
-  }, [routines])
+  }, [todaysRoutines])
 
   const toggleItem = async (id: string) => {
     const wasChecked = checkedItems.has(id)
@@ -71,11 +96,11 @@ export function RoutineSchedule({ routines, onRoutineToggle }: RoutineSchedulePr
   }
 
   // Separar rotinas em manhã e tarde/noite
-  const morningRoutines = routines.filter((r) => r.period === "morning")
-  const eveningRoutines = routines.filter((r) => r.period === "evening")
+  const morningRoutines = todaysRoutines.filter((r) => r.period === "morning")
+  const eveningRoutines = todaysRoutines.filter((r) => r.period === "evening")
 
   const completedCount = checkedItems.size
-  const totalCount = routines.length
+  const totalCount = todaysRoutines.length
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
   const renderRoutineItem = (item: RoutineItem, periodColor: { checked: string; unchecked: string }) => {
@@ -187,7 +212,7 @@ export function RoutineSchedule({ routines, onRoutineToggle }: RoutineSchedulePr
       )}
 
       {/* Mensagem quando não há rotinas */}
-      {routines.length === 0 && (
+      {todaysRoutines.length === 0 && (
         <div className="rounded-2xl border-2 border-dashed border-muted-foreground/30 bg-muted/50 p-8 text-center">
           <p className="text-muted-foreground">Nenhuma rotina cadastrada ainda.</p>
         </div>

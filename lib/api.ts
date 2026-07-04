@@ -879,16 +879,20 @@ export interface RoutineItem {
   title: string;
   emoji: string;
   period: "morning" | "evening";
+  childId?: string | null;
+  recurrenceDays?: RecurrenceDay[];
   completedToday?: boolean;
 }
 
 // Interface da API (campos reais retornados)
 interface ApiRoutine {
   id: string;
+  childId?: string | null;
   name: string;
   emoji: string;
-  timeOfDay: "morning" | "afternoon" | "night";
+  timeOfDay: "morning" | "afternoon" | "evening" | "night";
   scheduledTime: string | null;
+  recurrenceDays?: RecurrenceDay[];
   active: boolean;
   sortOrder: number;
   completedToday?: boolean;
@@ -906,6 +910,8 @@ function mapRoutine(apiRoutine: ApiRoutine): RoutineItem {
     emoji: apiRoutine.emoji,
     time: apiRoutine.scheduledTime || "",
     period,
+    childId: apiRoutine.childId ?? null,
+    recurrenceDays: apiRoutine.recurrenceDays ?? [],
     completedToday: apiRoutine.completedToday || false,
   };
 }
@@ -923,13 +929,17 @@ export const routinesApi = {
     title: string;
     emoji: string;
     period: "morning" | "evening";
+    childId?: string | null;
+    recurrenceDays?: RecurrenceDay[];
   }): Promise<RoutineItem> => {
     // Mapeia para o formato da API
     const apiData = {
+      childId: data.childId ?? undefined,
       name: data.title,
       emoji: data.emoji,
       scheduledTime: data.time,
       timeOfDay: data.period === "morning" ? "morning" : "night",
+      recurrenceDays: data.recurrenceDays ?? [],
     };
     const result = await fetchWithAuth("/api/routines", {
       method: "POST",
@@ -949,6 +959,9 @@ export const routinesApi = {
     if (data.time) apiData.scheduledTime = data.time;
     if (data.period)
       apiData.timeOfDay = data.period === "morning" ? "morning" : "night";
+    if (data.childId !== undefined) apiData.childId = data.childId;
+    if (data.recurrenceDays !== undefined)
+      apiData.recurrenceDays = data.recurrenceDays;
 
     const result = await fetchWithAuth(`/api/routines/${id}`, {
       method: "PATCH",

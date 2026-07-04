@@ -56,6 +56,7 @@ import {
   type MysteryPrize,
   type Mission,
   type StarRequest,
+  type StreakData,
   type FocusSession,
   type FamilyGoal,
   type ProactiveCategoryIcon,

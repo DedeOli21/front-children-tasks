@@ -37,6 +37,18 @@ const SCHOOL_DAYS: RecurrenceDay[] = [
   "friday",
 ]
 const WEEKEND_DAYS: RecurrenceDay[] = ["saturday", "sunday"]
+const ROUTINE_TIME_STORAGE_KEY = "children-task:last-routine-time"
+const DEFAULT_ROUTINE_TIME = "07:30"
+const SUGGESTED_TIMES = [
+  "06:30",
+  "07:00",
+  "07:30",
+  "12:00",
+  "17:30",
+  "18:30",
+  "20:00",
+  "20:30",
+]
 
 type RoutineForm = {
   time: string
@@ -46,12 +58,28 @@ type RoutineForm = {
   recurrenceDays: RecurrenceDay[]
 }
 
-const emptyForm: RoutineForm = {
-  time: "07:30",
-  title: "",
-  emoji: "✅",
-  period: "morning",
-  recurrenceDays: ALL_DAYS,
+function getLastRoutineTime() {
+  if (typeof window === "undefined") return DEFAULT_ROUTINE_TIME
+  return localStorage.getItem(ROUTINE_TIME_STORAGE_KEY) || DEFAULT_ROUTINE_TIME
+}
+
+function saveLastRoutineTime(time: string) {
+  if (typeof window === "undefined" || !time) return
+  localStorage.setItem(ROUTINE_TIME_STORAGE_KEY, time)
+}
+
+function periodFromTime(time: string): "morning" | "evening" {
+  return time >= "12:00" ? "evening" : "morning"
+}
+
+function createEmptyForm(time = getLastRoutineTime()): RoutineForm {
+  return {
+    time,
+    title: "",
+    emoji: "✅",
+    period: periodFromTime(time),
+    recurrenceDays: ALL_DAYS,
+  }
 }
 
 function hasSameDays(days: RecurrenceDay[], expected: RecurrenceDay[]) {
@@ -89,7 +117,7 @@ export function RoutineManager({
 }: RoutineManagerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<RoutineForm>(emptyForm)
+  const [form, setForm] = useState<RoutineForm>(() => createEmptyForm())
   const selectedDays = useMemo(
     () => new Set(form.recurrenceDays),
     [form.recurrenceDays],
@@ -105,7 +133,7 @@ export function RoutineManager({
   )
 
   const resetForm = () => {
-    setForm(emptyForm)
+    setForm(createEmptyForm())
     setEditingId(null)
     setIsOpen(false)
   }
@@ -156,6 +184,7 @@ export function RoutineManager({
     }
 
     try {
+      saveLastRoutineTime(form.time)
       if (editingId) {
         await onUpdate(editingId, payload)
         toast.success("Rotina atualizada")
@@ -175,7 +204,7 @@ export function RoutineManager({
     setForm({
       title: routine.title,
       emoji: routine.emoji,
-      time: routine.time || "07:30",
+      time: routine.time || getLastRoutineTime(),
       period: routine.period,
       recurrenceDays: routine.recurrenceDays?.length
         ? routine.recurrenceDays
@@ -217,7 +246,7 @@ export function RoutineManager({
           onClick={() => {
             setIsOpen(true)
             setEditingId(null)
-            setForm(emptyForm)
+            setForm(createEmptyForm())
           }}
           disabled={!selectedChildId}
           className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -255,11 +284,41 @@ export function RoutineManager({
                 type="time"
                 value={form.time}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, time: event.target.value }))
+                  setForm((current) => ({
+                    ...current,
+                    time: event.target.value,
+                    period: periodFromTime(event.target.value),
+                  }))
                 }
                 className="h-12 w-full rounded-2xl border-2 border-slate-200 bg-white pl-9 pr-3 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-emerald-400"
               />
             </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTED_TIMES.map((time) => {
+              const selected = form.time === time
+              return (
+                <button
+                  key={time}
+                  type="button"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      time,
+                      period: periodFromTime(time),
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-xs font-black transition-colors ${
+                    selected
+                      ? "bg-emerald-600 text-white"
+                      : "bg-white text-slate-500 ring-1 ring-slate-200 hover:text-emerald-700"
+                  }`}
+                >
+                  {time}
+                </button>
+              )
+            })}
           </div>
 
           <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-center">

@@ -251,6 +251,7 @@ export function PetScreen({
         isSick={pet.sick || pet.animationState === "sick"}
         currentBackground={currentBackground}
         species={species}
+        effect={pet.equippedItems?.effect}
         petName={pet.name}
       >
         <div className="flex flex-col items-center gap-1">

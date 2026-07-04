@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  resolvePetEffect,
   resolvePetImage,
   resolvePetSpecies,
 } from "@/components/pet/virtual-pet-stage"
@@ -51,5 +52,16 @@ describe("VirtualPetStage image resolver", () => {
         species: "cat",
       }),
     ).toBe("/assets/cat_celebration.jpg")
+  })
+
+  it("resolves equipped visual effects from attachment keys", () => {
+    expect(resolvePetEffect("water_magic")?.image).toBe(
+      "/assets/water_drop.jpg",
+    )
+    expect(resolvePetEffect("food_bone")?.image).toBe("/assets/food_bone.jpg")
+    expect(resolvePetEffect("freeze_potion")?.image).toBe(
+      "/assets/potion_freeze.jpg",
+    )
+    expect(resolvePetEffect("unknown_effect")).toBeNull()
   })
 })

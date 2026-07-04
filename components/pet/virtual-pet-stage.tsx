@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 
 type BackgroundKey = "bedroom" | "backyard" | "bg_bedroom" | "bg_backyard"
 export type PetSpeciesKey = "dog" | "cat"
+export type PetEffectKey = "water_magic" | "food_bone" | "freeze_potion"
 
 export interface VirtualPetStageProps {
   streak: number
@@ -15,6 +16,7 @@ export interface VirtualPetStageProps {
   isSick?: boolean
   currentBackground?: string | null
   species?: PetSpeciesKey | string | null
+  effect?: PetEffectKey | string | null
   petName?: string
   className?: string
   children?: ReactNode
@@ -53,6 +55,31 @@ const BACKGROUND_IMAGES: Record<BackgroundKey, string> = {
   bg_backyard: "/assets/bg_backyard.jpg",
 }
 
+const EFFECT_IMAGES: Record<
+  PetEffectKey,
+  {
+    image: string
+    label: string
+    glowClass: string
+  }
+> = {
+  water_magic: {
+    image: "/assets/water_drop.jpg",
+    label: "Água mágica",
+    glowClass: "bg-sky-300/45",
+  },
+  food_bone: {
+    image: "/assets/food_bone.jpg",
+    label: "Osso dourado",
+    glowClass: "bg-amber-300/45",
+  },
+  freeze_potion: {
+    image: "/assets/potion_freeze.jpg",
+    label: "Poção de proteção",
+    glowClass: "bg-indigo-300/45",
+  },
+}
+
 function resolveBackground(currentBackground?: string | null) {
   if (!currentBackground) return BACKGROUND_IMAGES.bedroom
   if (currentBackground.startsWith("/")) return currentBackground
@@ -72,6 +99,25 @@ export function resolvePetSpecies(species?: string | null): PetSpeciesKey {
   )
     return "cat"
   return "dog"
+}
+
+export function resolvePetEffect(effect?: string | null) {
+  if (!effect) return null
+
+  const normalized = effect.toLowerCase()
+  if (normalized.includes("water") || normalized.includes("agua"))
+    return EFFECT_IMAGES.water_magic
+  if (normalized.includes("bone") || normalized.includes("osso"))
+    return EFFECT_IMAGES.food_bone
+  if (
+    normalized.includes("freeze") ||
+    normalized.includes("potion") ||
+    normalized.includes("pocao") ||
+    normalized.includes("ice")
+  )
+    return EFFECT_IMAGES.freeze_potion
+
+  return null
 }
 
 export function resolvePetImage({
@@ -127,6 +173,7 @@ export function VirtualPetStage({
   isSick = false,
   currentBackground = "bedroom",
   species = "dog",
+  effect = null,
   petName = "Pet",
   className,
   children,
@@ -140,6 +187,8 @@ export function VirtualPetStage({
     species,
   })
   const motionState = resolveMotion(safeStreak, isCelebrating, isSick)
+  const effectPreset = resolvePetEffect(effect)
+  const showEffect = Boolean(effectPreset && safeStreak > 0 && !isSick)
 
   return (
     <section
@@ -190,8 +239,54 @@ export function VirtualPetStage({
               alt={petName}
               fill
               sizes="280px"
-              className="object-contain drop-shadow-2xl"
+              className="z-10 object-contain drop-shadow-2xl"
             />
+            {showEffect && effectPreset ? (
+              <motion.div
+                className="pointer-events-none absolute inset-0 z-20"
+                aria-hidden="true"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div
+                  className={cn(
+                    "absolute inset-8 rounded-full blur-3xl",
+                    effectPreset.glowClass,
+                  )}
+                />
+                {[0, 1, 2].map((index) => (
+                  <motion.div
+                    key={index}
+                    className="absolute"
+                    style={{
+                      left: `${18 + index * 28}%`,
+                      top: `${24 + (index % 2) * 22}%`,
+                    }}
+                    animate={{
+                      y: [0, -18, 0],
+                      opacity: [0.4, 0.95, 0.4],
+                      scale: [0.72, 1, 0.72],
+                    }}
+                    transition={{
+                      duration: 2.3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: index * 0.32,
+                    }}
+                  >
+                    <Image
+                      src={effectPreset.image}
+                      alt=""
+                      width={46}
+                      height={46}
+                      className="object-contain drop-shadow-xl"
+                    />
+                  </motion.div>
+                ))}
+                <span className="sr-only">{effectPreset.label}</span>
+              </motion.div>
+            ) : null}
           </motion.div>
         </AnimatePresence>
       </div>

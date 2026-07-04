@@ -66,6 +66,26 @@ const TYPE_LABELS: Record<ShopItemType, string> = {
   effect: "Efeitos",
 }
 
+const INVENTORY_TYPE_LABELS: Record<string, string> = {
+  ...TYPE_LABELS,
+  outfit: "Roupas",
+  glasses: "Óculos",
+  hat: "Chapéus",
+  species: "Espécies",
+}
+
+function inventoryKey(item: PetInventoryItem): string {
+  return item.inventoryItemId ?? item.petItemId ?? item.shopItemId ?? item.name
+}
+
+function equipTargetId(item: PetInventoryItem): string | null {
+  return item.inventoryItemId ?? item.petItemId ?? item.shopItemId ?? null
+}
+
+function itemTypeLabel(type: PetInventoryItem["type"]): string {
+  return INVENTORY_TYPE_LABELS[type] ?? "Cosmético"
+}
+
 interface PetScreenProps {
   stars: number
   onStarsChange: (stars: number) => void
@@ -111,6 +131,11 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
   const cosmetics = inventory.filter((i) => i.type !== "water" && i.type !== "food")
 
   const handleCare = async (item: PetInventoryItem) => {
+    if (!item.shopItemId) {
+      toast.error("Esse item é cosmético e não pode ser usado para cuidar.")
+      return
+    }
+
     try {
       const result = await petApi.care(item.shopItemId)
       setPet((prev) =>
@@ -161,8 +186,14 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
   }
 
   const handleEquip = async (item: PetInventoryItem) => {
+    const targetId = equipTargetId(item)
+    if (!targetId) {
+      toast.error("Não foi possível identificar esse item.")
+      return
+    }
+
     try {
-      const result = await petApi.equip(item.shopItemId)
+      const result = await petApi.equip(targetId)
       playBubbleSound()
       toast.success(result.message)
       const [freshPet, freshInventory] = await Promise.all([petApi.get(), petApi.inventory()])
@@ -282,6 +313,19 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
           </span>
         </div>
 
+        {pet.equippedAttachments?.length > 0 && (
+          <div className="relative z-10 mt-2 flex flex-wrap justify-center gap-1.5">
+            {pet.equippedAttachments.map((item) => (
+              <span
+                key={item.inventoryItemId}
+                className="rounded-full bg-white/80 px-2 py-1 text-xs font-black text-slate-600 shadow-sm"
+              >
+                {item.emoji} {item.name}
+              </span>
+            ))}
+          </div>
+        )}
+
         {pet.sick ? (
           <div className="relative z-10 mt-1 rounded-xl bg-red-50/90 p-2 text-center">
             <p className="text-sm font-bold text-red-500">
@@ -327,7 +371,7 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
           <div className="flex flex-wrap gap-2">
             {consumables.map((item) => (
               <button
-                key={item.shopItemId}
+                key={inventoryKey(item)}
                 onClick={() => handleCare(item)}
                 className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 font-bold text-emerald-700 shadow transition-transform hover:scale-105 active:scale-95"
               >
@@ -427,11 +471,14 @@ export function PetScreen({ stars, onStarsChange }: PetScreenProps) {
           ) : (
             <div className="space-y-2">
               {cosmetics.map((item) => (
-                <div key={item.shopItemId} className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/40 p-3">
+                <div key={inventoryKey(item)} className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/40 p-3">
                   <span className="text-3xl">{item.emoji}</span>
                   <div className="flex-1">
                     <p className="font-bold text-foreground">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{TYPE_LABELS[item.type]}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {itemTypeLabel(item.type)}
+                      {item.rarity ? ` · ${item.rarity}` : ""}
+                    </p>
                   </div>
                   <button
                     onClick={() => handleEquip(item)}

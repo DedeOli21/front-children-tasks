@@ -28,6 +28,7 @@ import {
   type ProactiveRequest,
   type Child,
   type ActiveTask,
+  type PetRewardResult,
 } from "@/lib/api";
 import { SmartTaskInput } from "@/components/parent/smart-task-input";
 import { TaskTemplateComposer } from "@/components/parent/task-template-composer";
@@ -49,6 +50,15 @@ interface RoutinePlannerProps {
   // Notifica o dashboard quando uma aprovação altera o saldo de estrelas
   onStarsChanged: (childId: string, stars: number) => void;
   onPlanningChanged?: () => void;
+}
+
+function notifyPetReward(petReward?: PetRewardResult | null) {
+  if (!petReward?.drop.dropped || !petReward.drop.item) return;
+
+  const item = petReward.drop.item;
+  toast.success(`${item.previewEmoji} Novo item do Pet: ${item.name}!`, {
+    description: "Ele já está no armário da criança para equipar.",
+  });
 }
 
 // Próximos 7 dias a partir de hoje
@@ -250,6 +260,7 @@ export function RoutinePlanner({
     try {
       const result = await tasksApi.approveLog(item.logId);
       toast.success(result.message);
+      notifyPetReward(result.petReward);
       onStarsChanged(result.childId, result.currentStars);
       setPendingTasks((prev) => prev.filter((p) => p.logId !== item.logId));
     } catch (err) {
@@ -263,6 +274,7 @@ export function RoutinePlanner({
     try {
       const result = await activeTasksApi.approve(item.id);
       toast.success(result.message);
+      notifyPetReward(result.petReward);
       onStarsChanged(result.childId, result.currentStars);
       setPendingActiveTasks((prev) => prev.filter((p) => p.id !== item.id));
     } catch (err) {
@@ -276,6 +288,7 @@ export function RoutinePlanner({
     try {
       const result = await missionsApi.approve(mission.id);
       toast.success(result.message);
+      notifyPetReward(result.petReward);
       onStarsChanged(result.childId, result.currentStars);
       setPendingMissions((prev) => prev.filter((p) => p.id !== mission.id));
       loadWeek();
@@ -324,6 +337,7 @@ export function RoutinePlanner({
     try {
       const result = await proactiveRequestsApi.approve(request.id, finalStars);
       toast.success(result.message);
+      notifyPetReward(result.petReward);
       onStarsChanged(request.childId, result.currentStars);
       setPendingProactiveRequests((prev) =>
         prev.filter((p) => p.id !== request.id),

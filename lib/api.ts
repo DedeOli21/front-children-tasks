@@ -308,6 +308,7 @@ export interface ProactiveRequest {
 export interface ProactiveApprovalResult extends ProactiveRequest {
   currentStars: number;
   starsEarned: number;
+  petReward?: PetRewardResult | null;
   message: string;
 }
 
@@ -470,6 +471,7 @@ export const tasksApi = {
     starsEarned: number;
     message: string;
     childId: string;
+    petReward?: PetRewardResult | null;
   }> =>
     fetchWithAuth(`/api/tasks/logs/${logId}/approve`, {
       method: "PATCH",
@@ -584,6 +586,7 @@ export const activeTasksApi = {
       currentStars: number;
       starsEarned: number;
       eventMultiplier: number;
+      petReward?: PetRewardResult | null;
       message: string;
     }
   > =>
@@ -648,7 +651,15 @@ export const missionsApi = {
 
   approve: (
     id: string,
-  ): Promise<Mission & { currentStars: number; message: string }> =>
+  ): Promise<
+    Mission & {
+      currentStars: number;
+      starsEarned?: number;
+      eventMultiplier?: number;
+      petReward?: PetRewardResult | null;
+      message: string;
+    }
+  > =>
     fetchWithAuth(`/api/missions/${id}/approve`, {
       method: "PATCH",
     }),
@@ -1236,6 +1247,68 @@ export const observationsApi = {
 export type PetStage = "seed" | "sprout" | "growing" | "blooming";
 export type PetMood = "happy" | "thirsty" | "hungry" | "sad";
 export type ShopItemType = "water" | "food" | "skin" | "background" | "effect";
+export type PetItemType =
+  | "outfit"
+  | "glasses"
+  | "hat"
+  | "background"
+  | "effect"
+  | "species";
+export type PetAttachmentSlot =
+  | "body"
+  | "head"
+  | "eyes"
+  | "background"
+  | "effect"
+  | "species";
+export type PetItemRarity = "common" | "rare" | "epic" | "legendary";
+export type PetAnimationState = "idle" | "happy" | "sad" | "sick" | "sleeping";
+
+export type PetEquippedItems = Partial<
+  Record<PetAttachmentSlot, string | null>
+>;
+
+export interface PetInventoryAttachment {
+  inventoryItemId: string;
+  petItemId: string;
+  name: string;
+  emoji: string;
+  type: PetItemType;
+  rarity: PetItemRarity;
+  isPremium: boolean;
+  attachmentSlot: PetAttachmentSlot;
+  attachmentKey: string;
+  assetUrl?: string | null;
+  quantity: number;
+  equipped: boolean;
+  equippedSlot?: PetAttachmentSlot | null;
+  acquisitionSource?: "shop" | "drop" | "admin" | "reward";
+  acquiredAt?: string | null;
+}
+
+export interface PetRewardResult {
+  progress: {
+    xp: number;
+    level: number;
+    xpToNextLevel: number;
+    animationState: PetAnimationState;
+  };
+  drop: {
+    dropped: boolean;
+    chanceBasisPoints: number;
+    rollBasisPoints: number;
+    item?: {
+      id: string;
+      key: string;
+      name: string;
+      rarity: PetItemRarity;
+      attachmentSlot: PetAttachmentSlot;
+      attachmentKey: string;
+      previewEmoji: string;
+      isPremium: boolean;
+    };
+  };
+}
 
 export interface PetCosmetic {
   id: string;
@@ -1247,11 +1320,19 @@ export interface VirtualPet {
   id: string;
   childId: string;
   name: string;
+  modelKey: string;
+  riveArtboard?: string | null;
+  riveStateMachine?: string | null;
+  animationState: PetAnimationState;
   waterLevel: number;
   nutritionLevel: number;
   xp: number;
+  level: number;
+  xpToNextLevel: number;
   stage: PetStage;
   mood: PetMood;
+  equippedItems: PetEquippedItems;
+  equippedAttachments: PetInventoryAttachment[];
   wilted: boolean;
   sick: boolean;
   sickSince: string | null;
@@ -1273,13 +1354,24 @@ export interface PetShopItem {
 }
 
 export interface PetInventoryItem {
-  shopItemId: string;
+  kind?: "shop_item" | "pet_item";
+  shopItemId?: string;
+  inventoryItemId?: string;
+  petItemId?: string;
   name: string;
   emoji: string;
-  type: ShopItemType;
-  restoreAmount: number;
+  type: ShopItemType | PetItemType;
+  restoreAmount?: number;
   quantity: number;
   equipped: boolean;
+  rarity?: PetItemRarity;
+  isPremium?: boolean;
+  attachmentSlot?: PetAttachmentSlot;
+  attachmentKey?: string;
+  assetUrl?: string | null;
+  equippedSlot?: PetAttachmentSlot | null;
+  acquisitionSource?: "shop" | "drop" | "admin" | "reward";
+  acquiredAt?: string | null;
 }
 
 export const petApi = {
@@ -1318,7 +1410,13 @@ export const petApi = {
   inventory: (childId?: string): Promise<PetInventoryItem[]> =>
     fetchWithAuth(withChild("/api/pet/inventory", childId)),
 
-  equip: (itemId: string): Promise<{ equipped: boolean; message: string }> =>
+  equip: (
+    itemId: string,
+  ): Promise<{
+    equipped: boolean;
+    message: string;
+    equippedItems?: PetEquippedItems;
+  }> =>
     fetchWithAuth(`/api/pet/inventory/${itemId}/equip`, { method: "PATCH" }),
 
   // Economia Botânica (responsável)

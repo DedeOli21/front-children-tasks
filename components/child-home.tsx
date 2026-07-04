@@ -24,7 +24,7 @@ import {
   Play,
   Timer,
   XCircle,
-  Sprout,
+  PawPrint,
   Sparkles,
   BookOpen,
   House,
@@ -56,7 +56,6 @@ import {
   type MysteryPrize,
   type Mission,
   type StarRequest,
-  type StreakData,
   type FocusSession,
   type FamilyGoal,
   type ProactiveCategoryIcon,
@@ -85,7 +84,6 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
   const [streak, setStreak] = useState(0)
   const [longestStreak, setLongestStreak] = useState(0)
   const [freezes, setFreezes] = useState(0)
-  const [plant, setPlant] = useState<StreakData["plant"] | null>(null)
   const [pendingBonuses, setPendingBonuses] = useState<StarRequest[]>([])
   const [pendingInitiatives, setPendingInitiatives] = useState<
     ProactiveRequest[]
@@ -167,7 +165,6 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       setStreak(streakData?.currentStreak ?? 0)
       setLongestStreak(streakData?.longestStreak ?? 0)
       setFreezes(streakData?.streakFreezes ?? 0)
-      setPlant(streakData?.plant ?? null)
       setPendingBonuses(bonusesData)
       setPendingInitiatives(initiativesData)
       setMysteryPrizes(mysteryBoxConfig.prizes)
@@ -297,7 +294,7 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
       if (result.currentStars !== undefined) setStars(result.currentStars)
       if (result.streakFreezes !== undefined) setFreezes(result.streakFreezes)
       if (reward.kind === "streak_freeze")
-        toast.success("Regador Mágico guardado para proteger sua plantinha!")
+        toast.success("Escudo Mágico guardado para proteger sua sequência!")
     } catch (error) {
       console.error("Erro ao resgatar recompensa:", error)
       setStars((prev) => prev + reward.cost)
@@ -515,7 +512,6 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
           streak={streak}
           longestStreak={longestStreak}
           freezes={freezes}
-          plant={plant ?? undefined}
         />
 
         {focusSession?.status === "running" && (
@@ -605,8 +601,8 @@ export function ChildHome({ childName, onLogout }: ChildHomeProps) {
               : "bg-muted text-muted-foreground hover:bg-secondary"
           }`}
         >
-          <Sprout className="h-4 w-4" />
-          <span className="text-[10px]">Planta</span>
+          <PawPrint className="h-4 w-4" />
+          <span className="text-[10px]">Pet</span>
         </button>
         <button
           onClick={() => setActiveTab("routine")}

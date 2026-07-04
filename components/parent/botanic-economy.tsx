@@ -9,12 +9,12 @@ import { petApi, settingsApi, type PetShopItem, type ShopItemType, type FamilySe
 const TYPE_LABELS: Record<ShopItemType, string> = {
   water: "💧 Água",
   food: "🌰 Comida",
-  skin: "🌵 Espécie",
+  skin: "🐾 Mascote",
   background: "🏡 Cenário",
   effect: "🫧 Efeito",
 }
 
-// Economia Botânica: o responsável gerencia os itens e preços da loja da planta
+// Loja do Pet: o responsável gerencia os itens e preços.
 export function BotanicEconomy() {
   const [items, setItems] = useState<PetShopItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -60,9 +60,9 @@ export function BotanicEconomy() {
           <Sprout className="h-6 w-6 text-emerald-500" />
         </div>
         <div className="flex-1">
-          <p className="text-lg font-bold text-emerald-700">Economia Botânica</p>
+          <p className="text-lg font-bold text-emerald-700">Loja do Pet</p>
           <p className="text-sm text-emerald-600/80">
-            Itens que a criança compra com estrelas para cuidar e decorar a plantinha
+            Itens que a criança compra com estrelas para cuidar e decorar o pet
           </p>
         </div>
         <button
@@ -296,7 +296,7 @@ function PenaltySettingsCard() {
     <div className="rounded-2xl bg-white p-4 shadow-lg">
       <p className="text-xs font-bold uppercase text-slate-400">Penalidade da meia-noite</p>
       <p className="mt-1 text-sm text-slate-500">
-        Dia incompleto sem Regador Mágico: a sequência zera e a planta adoece. A dedução de
+        Dia incompleto sem Escudo Mágico: a sequência zera e o pet fica triste. A dedução de
         estrelas é opcional:
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-4">

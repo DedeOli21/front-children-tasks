@@ -810,7 +810,7 @@ export function ParentDashboard({
         {(
           [
             { id: "monitor", label: "Acompanhar", icon: Users },
-            { id: "botanic", label: "Loja 🌱", icon: Sprout },
+            { id: "botanic", label: "Loja 🐾", icon: Sprout },
             { id: "reports", label: "Escola", icon: GraduationCap },
             { id: "history", label: "Histórico", icon: ClipboardList },
             { id: "manage", label: "Gerenciar", icon: Settings },

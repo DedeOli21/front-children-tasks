@@ -2,7 +2,6 @@
 
 import { Flame, Snowflake } from "lucide-react"
 import { useEffect, useState } from "react"
-import type { StreakData } from "@/lib/api"
 
 interface StreakDisplayProps {
   streak: number
@@ -10,10 +9,9 @@ interface StreakDisplayProps {
   // Recorde histórico e inventário de congelamentos (gamificação)
   longestStreak?: number
   freezes?: number
-  plant?: StreakData["plant"]
 }
 
-export function StreakDisplay({ streak, longestStreak = 0, freezes = 0, plant }: StreakDisplayProps) {
+export function StreakDisplay({ streak, longestStreak = 0, freezes = 0 }: StreakDisplayProps) {
   const [isAnimating, setIsAnimating] = useState(false)
 
   useEffect(() => {
@@ -41,10 +39,6 @@ export function StreakDisplay({ streak, longestStreak = 0, freezes = 0, plant }:
   }
 
   const getStreakMessage = () => {
-    if (plant?.state === "withered") return "A plantinha murchou. Amanhã ela pode brotar de novo!"
-    if (plant?.state === "protected") return "Seu Regador Mágico está protegendo a plantinha!"
-    if (plant?.stage === "blooming") return "A Planta da Consistência floresceu!"
-    if (plant?.stage === "budding") return "A plantinha está quase florescendo!"
     if (streak >= 7) return "LENDARIO! Voce e incrivel!"
     if (streak >= 5) return "EPICO! Continue assim!"
     if (streak >= 3) return "FOGO! Voce esta arrasando!"
@@ -84,11 +78,7 @@ export function StreakDisplay({ streak, longestStreak = 0, freezes = 0, plant }:
               isStreakActive ? "bg-white/20 backdrop-blur-sm" : "bg-slate-400/30"
             } ${isAnimating ? "animate-pulse-scale" : ""}`}
           >
-            {plant ? (
-              <span className="text-4xl drop-shadow-sm" title={plant.label}>
-                {plant.emoji}
-              </span>
-            ) : isStreakActive ? (
+            {isStreakActive ? (
               <Flame
                 className={`h-8 w-8 ${
                   streakLevel === "legendary"
@@ -115,11 +105,6 @@ export function StreakDisplay({ streak, longestStreak = 0, freezes = 0, plant }:
             <p className={`text-xs font-semibold ${isStreakActive ? "text-white/90" : "text-slate-500"}`}>
               {getStreakMessage()}
             </p>
-            {plant && (
-              <p className={`mt-0.5 text-[11px] font-bold ${isStreakActive ? "text-white/80" : "text-slate-500"}`}>
-                Planta: {plant.label}
-              </p>
-            )}
           </div>
         </div>
 
@@ -156,9 +141,9 @@ export function StreakDisplay({ streak, longestStreak = 0, freezes = 0, plant }:
               className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold ${
                 isStreakActive ? "bg-white/20 text-white" : "bg-white/70 text-sky-600"
               }`}
-              title="Congelamentos protegem sua sequência num dia difícil"
+              title="Proteções preservam sua sequência num dia difícil"
             >
-              <Snowflake className="h-3 w-3" /> {freezes} congelamento{freezes > 1 ? "s" : ""}
+              <Snowflake className="h-3 w-3" /> {freezes} proteção{freezes > 1 ? "ões" : ""}
             </span>
           )}
         </div>
